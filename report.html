@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keith's F.&.B. Inspection Report</title>
+<link rel="icon" type="image/png" href="icon.png">
+<meta name="theme-color" content="#1452b8">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f0ed; color: #1a1a1a; min-height: 100vh; }
+
+.app-header { background: #1a2744; color: white; padding: 14px 16px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.header-icon { width: 34px; height: 34px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+.header-icon img { width: 100%; height: 100%; object-fit: cover; }
+.header-text .store-label { font-size: 11px; opacity: 0.6; letter-spacing: 0.05em; text-transform: uppercase; }
+.header-text h1 { font-size: 17px; font-weight: 600; }
+
+.state-card { margin: 24px 16px; background: white; border-radius: 12px; border: 1px solid #e0e0dc; padding: 32px 20px; text-align: center; }
+.state-card .icon { font-size: 40px; margin-bottom: 12px; }
+.state-card h2 { font-size: 17px; color: #1a2744; margin-bottom: 6px; }
+.state-card p { font-size: 14px; color: #888; }
+
+.report-wrap { max-width: 720px; margin: 0 auto; padding: 14px 14px 40px; }
+
+.rpt-header { background: #1a2744; border-radius: 12px; padding: 18px 20px; color: white; margin-bottom: 12px; }
+.rpt-header h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.rpt-header .sub { font-size: 13px; opacity: 0.7; }
+
+.followup-bar { background: #fff8ec; border: 1px solid #e8c97a; border-radius: 10px; padding: 11px 16px; font-size: 13px; color: #7a4f0a; margin-bottom: 12px; }
+
+.score-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 12px; }
+.score-box { background: white; border-radius: 10px; border: 1px solid #e0e0dc; padding: 12px 10px; text-align: center; }
+.score-box .val { font-size: 22px; font-weight: 700; color: #1a2744; }
+.score-box .lbl { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+.score-box.hi .val { color: #2d7a12; }
+.score-box.lo .val { color: #b52222; }
+
+.section { background: white; border-radius: 12px; border: 1px solid #e0e0dc; margin-bottom: 10px; overflow: hidden; }
+.sec-head { background: #f0f4fc; padding: 11px 16px; display: flex; align-items: center; justify-content: space-between; }
+.sec-head-left { display: flex; align-items: center; gap: 8px; }
+.sec-icon { font-size: 18px; }
+.sec-title { font-size: 14px; font-weight: 700; color: #1a2744; }
+.sec-badge { font-size: 11px; background: #e0e0dc; border-radius: 20px; padding: 2px 9px; color: #888; font-weight: 600; }
+.sec-badge.all-pass { background: #eaf5e0; color: #2d7a12; }
+.sec-badge.has-fail { background: #fdeaea; color: #b52222; }
+
+.c-item { border-bottom: 1px solid #f0f0ec; }
+.c-item:last-child { border-bottom: none; }
+.item-row { padding: 10px 16px; display: flex; align-items: flex-start; gap: 10px; }
+.item-lbl { font-weight: 700; font-size: 12px; min-width: 32px; padding-top: 2px; flex-shrink: 0; }
+.lbl-yes { color: #2d7a12; }
+.lbl-no  { color: #b52222; }
+.lbl-na  { color: #7a5008; }
+.lbl-nil { color: #ccc; }
+.item-text { font-size: 14px; line-height: 1.45; color: #222; flex: 1; }
+
+.photo-strip { padding: 0 16px 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.photo-strip img { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; }
+.photo-strip img:active { opacity: 0.8; }
+
+.no-section { background: white; border-radius: 12px; border: 1.5px solid #e05050; margin-bottom: 10px; overflow: hidden; }
+.no-section .sec-head { background: #fdeaea; }
+.no-section .sec-title { color: #b52222; }
+.no-item { border-bottom: 1px solid #fae0e0; }
+.no-item:last-child { border-bottom: none; }
+
+.staffing-card { background: white; border-radius: 12px; border: 1px solid #e0e0dc; padding: 14px 16px; margin-bottom: 10px; }
+.staffing-card h3 { font-size: 14px; font-weight: 700; color: #1a2744; margin-bottom: 10px; }
+.staffing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sf { }
+.sf .sf-lbl { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: .04em; }
+.sf .sf-val { font-size: 15px; font-weight: 600; color: #1a2744; }
+
+.notes-card { background: white; border-radius: 12px; border: 1px solid #e0e0dc; padding: 14px 16px; margin-bottom: 10px; }
+.notes-card h3 { font-size: 14px; font-weight: 700; color: #1a2744; margin-bottom: 8px; }
+.notes-card p { font-size: 14px; color: #444; white-space: pre-wrap; line-height: 1.6; }
+
+.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 999; align-items: center; justify-content: center; }
+.lightbox.open { display: flex; }
+.lightbox img { max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 6px; }
+.lightbox-close { position: fixed; top: 16px; right: 18px; color: white; font-size: 32px; cursor: pointer; line-height: 1; }
+
+.footer { text-align: center; font-size: 11px; color: #bbb; padding: 8px 0 20px; }
+
+@media print {
+  body { background: white; }
+  .app-header { box-shadow: none; }
+  .lightbox { display: none !important; }
+  .photo-strip img { width: 80px; height: 80px; }
+  .section, .no-section { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-icon"><img src="icon.png" alt=""></div>
+  <div class="header-text">
+    <div class="store-label">Keith's Superstore</div>
+    <h1>F.&amp;B. Inspection Report</h1>
+  </div>
+</div>
+
+<div id="content">
+  <div class="state-card">
+    <div class="icon">&#9203;</div>
+    <h2>Loading report…</h2>
+    <p>Fetching inspection data</p>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close">&times;</span>
+  <img id="lb-img" src="" alt="">
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zdbaymktrzsmzimwdeua.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkYmF5bWt0cnpzbXppbXdkZXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDAxNTQsImV4cCI6MjA5MTQxNjE1NH0.-NONMuk3lkeL0HTiJtPBNEU3F33Y4dOIb1Iv7_K2Ykw';
+
+const SECTIONS = [
+  { id:'storerooms', title:'Storerooms', icon:'&#127978;', items:['Rotation of food supplies','All items covered, labeled, dated','Items stored on racks 6 inches from floor','Cleaning supplies stored in separate area','Shelves clean and free of dust','Walls, floors, ceilings, vents and doors clean','No signs of rodent/insect infestation'] },
+  { id:'refrigerator', title:'Refrigerator', icon:'&#10052;', items:['Shelves, racks, walls, floors, ceiling and doors clean','Interior, refrigerator fans clear and free of dust or ice','Thermometer visible and temperature 41F or below','Refrigerator temps logged daily','Raw food items stored below cooked food items','Food items dated and labeled','Food items discarded after 72 hours'] },
+  { id:'freezers', title:'Freezers', icon:'&#129398;', items:['All food covered, labeled and dated','All items stored on racks, allowing proper air circulation','Shelves, racks, walls, floors, ceiling and doors clean and free from ice build up','Thermometer visible and temperature 0F or below','Freezer temperature logged daily'] },
+  { id:'inventory', title:'Inventory', icon:'&#128230;', items:['Items organized and labeled for counts','Counts by sleeve and boxes confirmed','Counts done by same person','Counts done same day/time','Pricing updated when invoices come in with weekly products','Are there items that are not being used','Pricing is up to date/current with weeks received on all forms'] },
+  { id:'pizza', title:'Pizza Station', icon:'&#127829;', items:['Clean and free of toppings used to make previous pizza','Cutting utensil, knives and board wiped down and disinfected','Topping drained and refilled - all topping accounted for','All pizza crusts are stocked','Boxes are premade for hunks and call ins','Hot box displayed filled with pizza','Hot box display wiped down and clean behind and in front','Pizza time labeled of when made on box','Pizza variety in stock at time of inspection'] },
+  { id:'sink', title:'3 Compartment Sink', icon:'&#128703;', items:['Sanitizing solution test kit available and used','All items are air dried','Storage racks, walls and floor are clean','3 Compartment Sink log PPM recorded daily','Scrubbers/rags in clean order','All food prep equipment, utensils cleaned, sanitized and stored properly'] },
+  { id:'sanitation', title:'General Sanitation', icon:'&#129529;', items:['Daily cleaning schedule completed and followed','Handwashing procedures posted at hand washing sink','Towel and soap dispensers filled and working','All floors, walls, ceilings and work areas are clean','All work tables and drawers clean and neat','Hood filters clean and regularly scheduled to be cleaned','Gloves worn by employees per facility policy and procedure to serve food','Smoker cleaned out and ready','Steamer wiped down and drained','Heat boxes wiped down and off','Heated grab and go wiped down of crumbs, organized and clean','Hot box wiped down and glass cleaned inside and out','Trash taken out, boxes broken down','Griddle grease drain cleaned, disposed of daily into grease trap','Fryers filtered each day after use'] },
+  { id:'front', title:'Front of House', icon:'&#127968;', items:['Dining room tables and seats wiped down','Drink stations wiped down, free of trash','Dining room trash cans overflowing','Fresh cookies and pastries in bakery case; are they labeled','Condiments refilled and organized','Windows/Doors are wiped down, no smudges','Entrance way swept','Swept under seating','Coffee/Tea urns wiped down','Inventory organized in cabinets for access','Cups, lids, straws, condiments stocked'] },
+  { id:'entering', title:'Upon Entering Store', icon:'&#128682;', items:["Greeted with \"Welcome to Keith's\"",'Entrance area free of garbage/trash','Garbage cans recently pulled','Cigarette post at least 6 feet from doorways'] },
+  { id:'icecream', title:'Ice Cream Machines', icon:'&#127846;', items:['Ice cream log fully filled out','Machine working properly','Machine cleaned within last 7 days - Week 1 (verify on log)','Machine cleaned within last 7 days - Week 2 (verify on log)','Machine cleaned within last 7 days - Week 3 (verify on log)','Machine cleaned within last 7 days - Week 4 (verify on log)'] },
+  { id:'bakerycase', title:'Bakery Case', icon:'&#129360;', items:['Bakery case full for customers','Bakery case clean','Log complete','All products / shelves dated','All products in date'] },
+  { id:'pretzel', title:'Pretzel Warmer', icon:'&#129384;', items:['Clean','Stocked','Log complete','Product in date'] },
+  { id:'nacho', title:'Nacho Dispenser', icon:'&#129472;', items:['Clean','Stocked','Log up to date','Product in date'] },
+  { id:'gelato', title:'Gelato Case', icon:'&#127848;', items:['Clean','Stocked','No craters','Fresh','Log up to date'] }
+];
+
+function photoURL(path){
+  return SUPABASE_URL + '/storage/v1/object/public/inspection-photos/' + encodeURIComponent(path);
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fmtDate(d){
+  if(!d) return '';
+  var p=d.split('-'); return p.length===3 ? p[1]+'/'+p[2]+'/'+p[0] : d;
+}
+
+function openLightbox(src){
+  document.getElementById('lb-img').src=src;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+
+function scoreClass(s){ return s>=80?'hi':s<60?'lo':''; }
+
+function render(r){
+  var answers   = r.answers   || {};
+  var photoKeys = r.photo_keys || {};
+  var staffing  = r.staffing  || {};
+  var sname = r.store_name || '';
+  var storeLabel = '#'+(r.store_num||'?')+(sname?' – '+sname:'');
+  var yes=r.yes_count||0, no=r.no_count||0, na=r.na_count||0, score=r.score||0;
+  var fu = r.follow_up_date;
+
+  document.title = "Inspection Report – Store "+storeLabel+" – "+fmtDate(r.inspection_date);
+
+  var noItems=[];
+  SECTIONS.forEach(function(sec){
+    sec.items.forEach(function(item,i){
+      var k=sec.id+'_'+i;
+      if(answers[k]==='no') noItems.push({sec:sec.title,item:item,k:k});
+    });
+  });
+
+  var html='<div class="report-wrap">';
+
+  // Header
+  html+='<div class="rpt-header">' +
+    '<h2>Store '+esc(storeLabel)+'</h2>' +
+    '<div class="sub">' +
+      (r.inspection_date?'Date: '+fmtDate(r.inspection_date):'') +
+      (r.inspection_time?' &nbsp;&#183;&nbsp; '+esc(r.inspection_time):'') +
+      (r.inspector?' &nbsp;&#183;&nbsp; Inspector: '+esc(r.inspector):'') +
+    '</div>' +
+  '</div>';
+
+  // Follow-up
+  if(fu){
+    html+='<div class="followup-bar">&#128197; Follow-up deadline: <strong>'+fmtDate(fu)+'</strong> &nbsp;— store has 7 days to correct all NO items</div>';
+  }
+
+  // Score boxes
+  html+='<div class="score-row">' +
+    '<div class="score-box '+scoreClass(score)+'"><div class="val">'+score+'%</div><div class="lbl">Score</div></div>' +
+    '<div class="score-box hi"><div class="val">'+yes+'</div><div class="lbl">YES</div></div>' +
+    '<div class="score-box lo"><div class="val">'+no+'</div><div class="lbl">NO</div></div>' +
+    '<div class="score-box"><div class="val">'+na+'</div><div class="lbl">N/A</div></div>' +
+  '</div>';
+
+  // NO items summary
+  if(noItems.length){
+    html+='<div class="no-section"><div class="sec-head">' +
+      '<div class="sec-head-left"><span class="sec-icon">&#10060;</span><span class="sec-title">Action Required – '+noItems.length+' item'+(noItems.length>1?'s':'')+' marked NO</span></div>' +
+    '</div>';
+    noItems.forEach(function(ni){
+      var pics=(photoKeys[ni.k]||[]);
+      html+='<div class="no-item">' +
+        '<div class="item-row"><span class="item-lbl lbl-no">NO</span><span class="item-text"><strong>['+esc(ni.sec)+']</strong> '+esc(ni.item)+'</span></div>';
+      if(pics.length){
+        html+='<div class="photo-strip">';
+        pics.forEach(function(path){
+          var url=photoURL(path);
+          html+='<img src="'+url+'" loading="lazy" onclick="openLightbox(\''+url+'\')" alt="photo">';
+        });
+        html+='</div>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+
+  // All sections
+  SECTIONS.forEach(function(sec){
+    var answered=sec.items.filter(function(_,i){ return answers[sec.id+'_'+i]!=null; }).length;
+    var nos=sec.items.filter(function(_,i){ return answers[sec.id+'_'+i]==='no'; }).length;
+    var badgeCls=nos>0?' has-fail':answered===sec.items.length?' all-pass':'';
+
+    html+='<div class="section"><div class="sec-head">' +
+      '<div class="sec-head-left"><span class="sec-icon">'+sec.icon+'</span><span class="sec-title">'+esc(sec.title)+'</span></div>' +
+      '<span class="sec-badge'+badgeCls+'">'+answered+'/'+sec.items.length+'</span>' +
+    '</div>';
+
+    sec.items.forEach(function(item,i){
+      var k=sec.id+'_'+i;
+      var v=answers[k];
+      var lbl=v==='yes'?'YES':v==='no'?'NO':v==='na'?'N/A':'—';
+      var cls=v==='yes'?'lbl-yes':v==='no'?'lbl-no':v==='na'?'lbl-na':'lbl-nil';
+      var pics=(photoKeys[k]||[]);
+      html+='<div class="c-item">' +
+        '<div class="item-row"><span class="item-lbl '+cls+'">'+lbl+'</span><span class="item-text">'+esc(item)+'</span></div>';
+      if(pics.length){
+        html+='<div class="photo-strip">';
+        pics.forEach(function(path){
+          var url=photoURL(path);
+          html+='<img src="'+url+'" loading="lazy" onclick="openLightbox(\''+url+'\')" alt="photo">';
+        });
+        html+='</div>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+
+  // Staffing
+  if(staffing.sched||staffing.kitchen||staffing.front||staffing.needed){
+    html+='<div class="staffing-card"><h3>Staffing</h3><div class="staffing-grid">';
+    if(staffing.sched)   html+='<div class="sf"><div class="sf-lbl">On Schedule</div><div class="sf-val">'+esc(staffing.sched)+'</div></div>';
+    if(staffing.kitchen) html+='<div class="sf"><div class="sf-lbl">Kitchen</div><div class="sf-val">'+esc(staffing.kitchen)+'</div></div>';
+    if(staffing.front)   html+='<div class="sf"><div class="sf-lbl">Front</div><div class="sf-val">'+esc(staffing.front)+'</div></div>';
+    if(staffing.needed)  html+='<div class="sf"><div class="sf-lbl">Needed</div><div class="sf-val">'+esc(staffing.needed)+'</div></div>';
+    html+='</div></div>';
+  }
+
+  // Notes
+  if(r.notes && r.notes.trim()){
+    html+='<div class="notes-card"><h3>Notes</h3><p>'+esc(r.notes)+'</p></div>';
+  }
+
+  html+='<div class="footer">Keith\'s Superstore F.&amp;B. Inspection System &nbsp;&#183;&nbsp; Generated '+new Date().toLocaleString()+'</div>';
+  html+='</div>';
+
+  document.getElementById('content').innerHTML=html;
+}
+
+function showError(msg){
+  document.getElementById('content').innerHTML='<div class="state-card">' +
+    '<div class="icon">&#9888;&#65039;</div><h2>Report not found</h2><p>'+esc(msg)+'</p></div>';
+}
+
+async function load(){
+  var params=new URLSearchParams(window.location.search);
+  var id=params.get('id');
+  if(!id){ showError('No inspection ID in the URL.'); return; }
+
+  try{
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/inspections?id=eq.'+encodeURIComponent(id)+'&select=*',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    var rows=await resp.json();
+    if(!rows.length) throw new Error('Inspection ID not found.');
+    render(rows[0]);
+  }catch(err){
+    showError(err.message);
+  }
+}
+
+load();
+</script>
+</body>
+</html>

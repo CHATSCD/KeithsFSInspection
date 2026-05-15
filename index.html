@@ -213,8 +213,16 @@ input[type=file] { display: none; }
   <p class="export-note">Photos are embedded in the PDF for every answered item</p>
   <button class="btn-print" onclick="printReport()">&#128438; Print Report</button>
   <button class="btn-sheets" onclick="openSheetsModal()">&#128202; Download CSV for Google Sheets</button>
-  <button class="btn-backup" onclick="backupToSupabase()">&#9729;&#65039; Backup to Supabase</button>
+  <button class="btn-backup" onclick="backupToSupabase()">&#9729;&#65039; Save &amp; Get Share Link</button>
   <div class="backup-status" id="backup-status"></div>
+  <div class="share-box" id="share-box" style="display:none;">
+    <p style="font-size:12px;color:#666;margin-bottom:8px;">Share this link with the store — photos included, no attachment needed:</p>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" id="share-link" readonly style="flex:1;border:1px solid #d0d0cc;border-radius:8px;padding:9px 10px;font-size:13px;background:#f8f8f5;color:#1a2744;">
+      <button onclick="copyLink()" style="padding:9px 14px;border-radius:8px;background:#1a2744;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;" id="copy-btn">Copy</button>
+    </div>
+    <button onclick="shareLink()" id="share-btn" style="display:none;width:100%;margin-top:8px;padding:11px;border-radius:8px;background:#1452b8;color:white;border:none;font-size:14px;font-weight:600;cursor:pointer;">&#128279; Share with Store</button>
+  </div>
 </div>
 
 <!-- Sheets Modal -->
@@ -704,13 +712,40 @@ async function backupToSupabase(){
 
     var totalUploaded=Object.values(photoKeys).reduce(function(a,v){ return a+v.length; },0);
     statusEl.className='backup-status show success';
-    statusEl.textContent='Saved! ID: '+inspectionId+(totalUploaded>0?' | '+totalUploaded+' photo(s) uploaded':'');
+    statusEl.textContent='Saved! '+(totalUploaded>0?totalUploaded+' photo(s) uploaded. ':'')+'Share link ready below.';
+
+    var reportURL=window.location.origin+window.location.pathname.replace(/\/[^/]*$/,'/')+('report.html?id='+inspectionId);
+    document.getElementById('share-link').value=reportURL;
+    document.getElementById('share-box').style.display='block';
+    if(navigator.share) document.getElementById('share-btn').style.display='block';
 
   }catch(err){
     statusEl.className='backup-status show error';
-    statusEl.textContent='Backup failed: '+err.message;
+    statusEl.textContent='Save failed: '+err.message;
     console.error(err);
   }
+}
+
+function copyLink(){
+  var inp=document.getElementById('share-link');
+  inp.select(); inp.setSelectionRange(0,9999);
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(inp.value).then(function(){
+      var btn=document.getElementById('copy-btn');
+      btn.textContent='Copied!'; setTimeout(function(){ btn.textContent='Copy'; },2000);
+    });
+  } else {
+    document.execCommand('copy');
+    var btn=document.getElementById('copy-btn');
+    btn.textContent='Copied!'; setTimeout(function(){ btn.textContent='Copy'; },2000);
+  }
+}
+
+function shareLink(){
+  var url=document.getElementById('share-link').value;
+  var store=document.getElementById('store-num').value||'';
+  var date=document.getElementById('insp-date').value||'';
+  navigator.share({ title:"Keith's F.&B. Inspection – Store #"+store, text:'Inspection report for Store #'+store+' ('+date+'). Please review and correct all NO items within 7 days.', url:url });
 }
 
 function clean(s){ return String(s).replace(/[^\x00-\x7E]/g,'').trim(); }
