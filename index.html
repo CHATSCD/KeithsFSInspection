@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Keith's F.S. Inspection</title>
+<title>Keith's F.&.B. Inspection</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1452b8">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -159,10 +163,10 @@ input[type=file] { display: none; }
 <body>
 
 <div class="app-header">
-  <div class="header-icon">&#128203;</div>
+  <div class="header-icon" style="background:none;padding:0;overflow:hidden;"><img src="icon.png" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span style="display:none;width:34px;height:34px;background:#c8a84b;border-radius:8px;align-items:center;justify-content:center;font-size:18px;">&#128203;</span></div>
   <div class="header-text">
     <div class="store-label">Keith's Superstore</div>
-    <h1>F.S. Inspection</h1>
+    <h1>F.&amp;B. Inspection</h1>
   </div>
   <a href="admin.html" style="margin-left:auto;background:rgba(255,255,255,0.15);color:white;text-decoration:none;padding:7px 13px;border-radius:8px;font-size:13px;">&#9881; Admin</a>
 </div>
@@ -206,7 +210,7 @@ input[type=file] { display: none; }
 
 <div class="actions">
   <button class="btn-export" onclick="exportPDF()">&#128196; Export PDF Report</button>
-  <p class="export-note">Photos on NO items are embedded in the PDF</p>
+  <p class="export-note">Photos are embedded in the PDF for every answered item</p>
   <button class="btn-print" onclick="printReport()">&#128438; Print Report</button>
   <button class="btn-sheets" onclick="openSheetsModal()">&#128202; Download CSV for Google Sheets</button>
   <button class="btn-backup" onclick="backupToSupabase()">&#9729;&#65039; Backup to Supabase</button>
@@ -387,7 +391,6 @@ function updateStoreName(){
 var answers={}, photos={};
 SECTIONS.forEach(function(s){ s.items.forEach(function(_,i){ var k=s.id+'_'+i; answers[k]=null; photos[k]=[]; }); });
 
-// BUILD — uses string concatenation to avoid template-literal edge cases
 function build(){
   var wrap=document.getElementById('sections');
   SECTIONS.forEach(function(sec){
@@ -419,7 +422,9 @@ function build(){
           '</div>' +
           '<div class="photo-zone" id="pz_'+k+'">' +
             '<div class="photo-row" id="pr_'+k+'">' +
-              '<div class="add-tile" onclick="triggerFile(\''+k+'\')"><span class="plus">+</span><span>Add photo</span></div>' +
+              '<div class="add-tile" onclick="triggerFile(\''+k+'\')">' +
+                '<span class="plus">+</span><span>Add photo</span>' +
+              '</div>' +
             '</div>' +
             '<input type="file" id="fi_'+k+'" accept="image/*" capture="environment" multiple onchange="gotFiles(\''+k+'\',this)">' +
           '</div>';
@@ -436,7 +441,7 @@ function build(){
               '<div class="full"><label>Equipment</label><input type="text" id="mt_equip_'+k+'" value="Ice Cream Machine"></div>' +
               '<div class="full"><label>Issue Description</label><textarea id="mt_issue_'+k+'" placeholder="Describe the issue..."></textarea></div>' +
             '</div>' +
-            '<button class="btn-maint" onclick="submitMaint(\''+k+'\')">Generate Maintenance Ticket</button>' +
+            '<button class="btn-maint" onclick="submitMaint(\''+k+'\')" >Generate Maintenance Ticket</button>' +
             '<div class="maint-sent" id="ms_'+k+'"></div>' +
           '</div>';
       }
@@ -546,7 +551,6 @@ function submitMaint(k){
   window._tickets=window._tickets||{}; window._tickets[k]={num,store,date,rep,pri,equip,issue};
 }
 
-// CSV / SHEETS
 function buildCSV(){
   var store=document.getElementById('store-num').value||'';
   var sname=getStoreName(store);
@@ -586,7 +590,6 @@ function downloadCSV(){
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
-// PRINT
 function printReport(){
   SECTIONS.forEach(function(sec){
     document.getElementById('body_'+sec.id).classList.add('open');
@@ -601,7 +604,6 @@ function printReport(){
   window.print();
 }
 
-// SUPABASE BACKUP
 function dataURLtoBlob(dataURL){
   var parts=dataURL.split(',');
   var mime=parts[0].match(/:(.*?);/)[1];
@@ -665,7 +667,6 @@ async function backupToSupabase(){
     var data=await resp.json();
     var inspectionId=data[0].id;
 
-    // Upload photos to storage
     var allPhotoEntries=Object.entries(photos).filter(function(e){ return e[1].length>0; });
     var photoKeys={};
 
@@ -690,7 +691,6 @@ async function backupToSupabase(){
           if(upResp.ok) photoKeys[key].push(path);
         }
       }
-      // Update record with photo paths
       await fetch(SUPABASE_URL+'/rest/v1/inspections?id=eq.'+inspectionId,{
         method:'PATCH',
         headers:{
@@ -713,7 +713,6 @@ async function backupToSupabase(){
   }
 }
 
-// PDF
 function clean(s){ return String(s).replace(/[^\x00-\x7E]/g,'').trim(); }
 
 function exportPDF(){
@@ -738,7 +737,6 @@ function exportPDF(){
     var chkY=function(n){ if(y+n>730){ doc.addPage(); y=44; } };
     var T=function(s,x,yy,opts){ var c=clean(s); if(c) doc.text(c,x,yy,opts||undefined); };
 
-    // Header
     doc.setFillColor(26,39,68); doc.rect(0,0,W,54,'F');
     doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont(undefined,'bold');
     T("Keith's Superstore - F.S. Inspection Report",36,28);
