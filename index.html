@@ -164,6 +164,7 @@ input[type=file] { display: none; }
     <div class="store-label">Keith's Superstore</div>
     <h1>F.S. Inspection</h1>
   </div>
+  <a href="admin.html" style="margin-left:auto;background:rgba(255,255,255,0.15);color:white;text-decoration:none;padding:7px 13px;border-radius:8px;font-size:13px;">&#9881; Admin</a>
 </div>
 
 <div class="meta-card">
@@ -501,7 +502,9 @@ function delPhoto(k,i){ photos[k].splice(i,1); renderThumbs(k); refreshCam(k); }
 function refreshCam(k){
   var btn=document.getElementById('cam_'+k), n=photos[k].length;
   btn.className='btn-cam'+(n>0?' has-pic':'');
-  btn.innerHTML=n>0?'F4F7 '+n:'F4F7';
+  btn.style.width=n>0?'auto':'34px';
+  btn.style.padding=n>0?'0 8px':'0';
+  btn.innerHTML=n>0?'&#128247; '+n:'&#128247;';
 }
 
 function updateBadge(secId){
