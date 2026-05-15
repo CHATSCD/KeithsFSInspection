@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin – Keith's F.S. Inspection</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f0ed; color: #1a1a1a; min-height: 100vh; }
+
+/* PIN gate */
+.pin-gate { position: fixed; inset: 0; background: #1a2744; display: flex; align-items: center; justify-content: center; z-index: 999; }
+.pin-gate.hidden { display: none; }
+.pin-box { background: white; border-radius: 16px; padding: 32px 28px; width: 320px; text-align: center; }
+.pin-box h2 { font-size: 18px; color: #1a2744; margin-bottom: 6px; }
+.pin-box p { font-size: 13px; color: #888; margin-bottom: 20px; }
+.pin-box input { width: 100%; border: 2px solid #d0d0cc; border-radius: 10px; padding: 12px 14px; font-size: 22px; text-align: center; letter-spacing: 6px; color: #1a2744; margin-bottom: 12px; }
+.pin-box input:focus { outline: none; border-color: #1a2744; }
+.pin-box .btn-pin { width: 100%; padding: 13px; border-radius: 10px; background: #1a2744; color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
+.pin-box .pin-err { font-size: 13px; color: #b52222; margin-top: 8px; display: none; }
+
+/* Header */
+.app-header { background: #1a2744; color: white; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.header-left { display: flex; align-items: center; gap: 10px; }
+.header-icon { width: 34px; height: 34px; background: #c8a84b; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.header-text .store-label { font-size: 11px; opacity: 0.6; letter-spacing: 0.05em; text-transform: uppercase; }
+.header-text h1 { font-size: 17px; font-weight: 600; }
+.btn-lock { background: rgba(255,255,255,0.15); border: none; color: white; padding: 7px 13px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.btn-lock:hover { background: rgba(255,255,255,0.25); }
+
+/* Stats */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 16px 10px; }
+@media(max-width: 700px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+.stat-card { background: white; border-radius: 12px; border: 1px solid #e0e0dc; padding: 14px 16px; }
+.stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.stat-value { font-size: 26px; font-weight: 700; color: #1a2744; }
+.stat-sub { font-size: 11px; color: #aaa; margin-top: 2px; }
+.stat-card.warn .stat-value { color: #b52222; }
+.stat-card.good .stat-value { color: #2d7a12; }
+
+/* Filters */
+.filters { margin: 0 16px 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.filters input, .filters select { border: 1px solid #d0d0cc; border-radius: 8px; padding: 8px 11px; font-size: 14px; background: white; color: #1a1a1a; }
+.filters input { flex: 1; min-width: 140px; }
+.btn-refresh { padding: 8px 14px; border-radius: 8px; background: #1a2744; color: white; border: none; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn-refresh:hover { opacity: 0.88; }
+.btn-csv { padding: 8px 14px; border-radius: 8px; background: #1a7a3c; color: white; border: none; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn-csv:hover { opacity: 0.88; }
+
+/* Table */
+.table-wrap { margin: 0 16px 24px; background: white; border-radius: 12px; border: 1px solid #e0e0dc; overflow: hidden; }
+.loading-msg, .empty-msg { padding: 40px; text-align: center; color: #aaa; font-size: 14px; }
+.error-msg { padding: 20px 24px; color: #b52222; font-size: 13px; background: #fdeaea; }
+
+table { width: 100%; border-collapse: collapse; }
+thead { background: #f5f5f2; }
+th { padding: 10px 13px; text-align: left; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; border-bottom: 1px solid #e0e0dc; white-space: nowrap; cursor: pointer; user-select: none; }
+th:hover { color: #1a2744; }
+th .sort-arrow { opacity: 0.4; margin-left: 3px; }
+th.sorted .sort-arrow { opacity: 1; color: #1a2744; }
+td { padding: 10px 13px; font-size: 13px; border-bottom: 1px solid #f0f0ec; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr.data-row { cursor: pointer; }
+tr.data-row:hover td { background: #f8f8f5; }
+
+.score-pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.score-hi  { background: #eaf5e0; color: #2d7a12; }
+.score-mid { background: #fff8e0; color: #8a6000; }
+.score-lo  { background: #fdeaea; color: #b52222; }
+
+.status-pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.status-ok       { background: #eaf5e0; color: #2d7a12; }
+.status-due      { background: #fff3de; color: #7a5008; }
+.status-overdue  { background: #fdeaea; color: #b52222; }
+.status-none     { background: #f0f0ec; color: #aaa; }
+
+/* Detail drawer */
+tr.detail-row td { padding: 0; background: #f8f8f5; }
+.detail-inner { padding: 16px 20px; display: none; }
+.detail-inner.open { display: block; }
+.detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+@media(max-width: 600px) { .detail-grid { grid-template-columns: 1fr 1fr; } }
+.detail-field label { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.04em; }
+.detail-field p { font-size: 13px; color: #222; font-weight: 500; margin-top: 2px; }
+.section-list { margin-top: 10px; }
+.section-list h4 { font-size: 12px; color: #1a2744; font-weight: 700; margin: 10px 0 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.answer-row { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; padding: 3px 0; }
+.answer-lbl { font-weight: 700; min-width: 30px; }
+.lbl-yes { color: #2d7a12; }
+.lbl-no  { color: #b52222; }
+.lbl-na  { color: #7a5008; }
+.lbl-nil { color: #bbb; }
+.answer-text { color: #444; line-height: 1.4; }
+.no-items-list { margin-top: 12px; padding: 12px 14px; background: #fdeaea; border-radius: 8px; border: 1px solid #e8c0c0; }
+.no-items-list h4 { font-size: 12px; color: #b52222; font-weight: 700; margin-bottom: 6px; }
+.no-items-list li { font-size: 12px; color: #722; margin-left: 14px; line-height: 1.6; }
+.notes-box { margin-top: 10px; background: #f5f5f2; border-radius: 8px; padding: 10px 13px; font-size: 13px; color: #444; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+
+<!-- PIN Gate -->
+<div class="pin-gate" id="pin-gate">
+  <div class="pin-box">
+    <div style="font-size:32px;margin-bottom:10px;">&#128274;</div>
+    <h2>Admin Access</h2>
+    <p>Enter the admin PIN to continue</p>
+    <input type="password" id="pin-input" placeholder="PIN" maxlength="20" onkeydown="if(event.key==='Enter')checkPin()">
+    <button class="btn-pin" onclick="checkPin()">Unlock</button>
+    <div class="pin-err" id="pin-err">Incorrect PIN</div>
+  </div>
+</div>
+
+<!-- Main App (hidden until unlocked) -->
+<div id="main-app" style="display:none;">
+
+<div class="app-header">
+  <div class="header-left">
+    <div class="header-icon">&#9881;</div>
+    <div class="header-text">
+      <div class="store-label">Keith's Superstore</div>
+      <h1>Inspection Admin</h1>
+    </div>
+  </div>
+  <button class="btn-lock" onclick="lock()">&#128274; Lock</button>
+</div>
+
+<div class="stats-row" id="stats-row">
+  <div class="stat-card"><div class="stat-label">Total Inspections</div><div class="stat-value" id="st-total">—</div><div class="stat-sub">all time</div></div>
+  <div class="stat-card" id="sc-avg"><div class="stat-label">Avg Score</div><div class="stat-value" id="st-avg">—</div><div class="stat-sub">across all inspections</div></div>
+  <div class="stat-card"><div class="stat-label">Stores Visited</div><div class="stat-value" id="st-stores">—</div><div class="stat-sub">unique store numbers</div></div>
+  <div class="stat-card" id="sc-overdue"><div class="stat-label">Overdue Follow-ups</div><div class="stat-value" id="st-overdue">—</div><div class="stat-sub">past 7-day window</div></div>
+</div>
+
+<div class="filters">
+  <input type="text" id="filter-store" placeholder="Filter by store #…" oninput="applyFilters()">
+  <input type="text" id="filter-inspector" placeholder="Filter by inspector…" oninput="applyFilters()">
+  <input type="date" id="filter-from" onchange="applyFilters()">
+  <input type="date" id="filter-to" onchange="applyFilters()">
+  <button class="btn-refresh" onclick="loadData()">&#8635; Refresh</button>
+  <button class="btn-csv" onclick="exportCSV()">&#11015; Export CSV</button>
+</div>
+
+<div class="table-wrap" id="table-wrap">
+  <div class="loading-msg" id="loading-msg">Loading inspections…</div>
+</div>
+
+</div><!-- /main-app -->
+
+<script>
+// ── CONFIG ── Change ADMIN_PIN to your preferred PIN
+const ADMIN_PIN    = '1234';
+const SUPABASE_URL = 'https://zdbaymktrzsmzimwdeua.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkYmF5bWt0cnpzbXppbXdkZXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDAxNTQsImV4cCI6MjA5MTQxNjE1NH0.-NONMuk3lkeL0HTiJtPBNEU3F33Y4dOIb1Iv7_K2Ykw';
+
+const STORE_NAMES = {
+  '59':'Moselle','60':'Lumberton','61':'Wiggins','62':'Sumrall','63':'Petal',
+  '64':'Purvis','65':'Poplarville','66':'Hattiesburg','67':'Hattiesburg',
+  '68':'Hattiesburg','69':'Columbia','70':'Tylertown','71':'Monticello',
+  '72':'Brookhaven','73':'Hazlehurst','74':'Crystal Springs','75':'Mendenhall',
+  '76':'Magee','77':'Collins','78':'Seminary','79':'Laurel','80':'Laurel',
+  '81':'Ellisville','82':'Hurley','83':'Pascagoula','84':'Gautier',
+  '85':'Moss Point','86':'Ocean Springs','87':'Biloxi','88':'Gulfport',
+  '89':'Gulfport','90':'Long Beach','91':'Pass Christian','92':'Bay St. Louis',
+  '93':'Waveland','94':'Picayune','95':'Poplarville','96':'Carriere',
+  '97':'Slidell','98':'Covington','99':'Mandeville','100':'Madisonville',
+  '101':'Hammond','102':'Ponchatoula','103':'Amite','104':'Franklinton',
+  '105':'Bogalusa','106':'Poplarville','107':'Saucier','108':'DIberville',
+  '109':'Diberville','110':'Biloxi','196':'Poplarville'
+};
+
+const SECTIONS = [
+  { id:'storerooms', title:'Storerooms', items:['Rotation of food supplies','All items covered, labeled, dated','Items stored on racks 6 inches from floor','Cleaning supplies stored in separate area','Shelves clean and free of dust','Walls, floors, ceilings, vents and doors clean','No signs of rodent/insect infestation'] },
+  { id:'refrigerator', title:'Refrigerator', items:['Shelves, racks, walls, floors, ceiling and doors clean','Interior, refrigerator fans clear and free of dust or ice','Thermometer visible and temperature 41F or below','Refrigerator temps logged daily','Raw food items stored below cooked food items','Food items dated and labeled','Food items discarded after 72 hours'] },
+  { id:'freezers', title:'Freezers', items:['All food covered, labeled and dated','All items stored on racks, allowing proper air circulation','Shelves, racks, walls, floors, ceiling and doors clean and free from ice build up','Thermometer visible and temperature 0F or below','Freezer temperature logged daily'] },
+  { id:'inventory', title:'Inventory', items:['Items organized and labeled for counts','Counts by sleeve and boxes confirmed','Counts done by same person','Counts done same day/time','Pricing updated when invoices come in with weekly products','Are there items that are not being used','Pricing is up to date/current with weeks received on all forms'] },
+  { id:'pizza', title:'Pizza Station', items:['Clean and free of toppings used to make previous pizza','Cutting utensil, knives and board wiped down and disinfected','Topping drained and refilled - all topping accounted for','All pizza crusts are stocked','Boxes are premade for hunks and call ins','Hot box displayed filled with pizza','Hot box display wiped down and clean behind and in front','Pizza time labeled of when made on box','Pizza variety in stock at time of inspection'] },
+  { id:'sink', title:'3 Compartment Sink', items:['Sanitizing solution test kit available and used','All items are air dried','Storage racks, walls and floor are clean','3 Compartment Sink log PPM recorded daily','Scrubbers/rags in clean order','All food prep equipment, utensils cleaned, sanitized and stored properly'] },
+  { id:'sanitation', title:'General Sanitation', items:['Daily cleaning schedule completed and followed','Handwashing procedures posted at hand washing sink','Towel and soap dispensers filled and working','All floors, walls, ceilings and work areas are clean','All work tables and drawers clean and neat','Hood filters clean and regularly scheduled to be cleaned','Gloves worn by employees per facility policy and procedure to serve food','Smoker cleaned out and ready','Steamer wiped down and drained','Heat boxes wiped down and off','Heated grab and go wiped down of crumbs, organized and clean','Hot box wiped down and glass cleaned inside and out','Trash taken out, boxes broken down','Griddle grease drain cleaned, disposed of daily into grease trap','Fryers filtered each day after use'] },
+  { id:'front', title:'Front of House', items:['Dining room tables and seats wiped down','Drink stations wiped down, free of trash','Dining room trash cans overflowing','Fresh cookies and pastries in bakery case; are they labeled','Condiments refilled and organized','Windows/Doors are wiped down, no smudges','Entrance way swept','Swept under seating','Coffee/Tea urns wiped down','Inventory organized in cabinets for access','Cups, lids, straws, condiments stocked'] },
+  { id:'entering', title:'Upon Entering Store', items:["Greeted with \"Welcome to Keith's\"",'Entrance area free of garbage/trash','Garbage cans recently pulled','Cigarette post at least 6 feet from doorways'] },
+  { id:'icecream', title:'Ice Cream Machines', items:['Ice cream log fully filled out','Machine working properly','Machine cleaned within last 7 days - Week 1 (verify on log)','Machine cleaned within last 7 days - Week 2 (verify on log)','Machine cleaned within last 7 days - Week 3 (verify on log)','Machine cleaned within last 7 days - Week 4 (verify on log)'] },
+  { id:'bakerycase', title:'Bakery Case', items:['Bakery case full for customers','Bakery case clean','Log complete','All products / shelves dated','All products in date'] },
+  { id:'pretzel', title:'Pretzel Warmer', items:['Clean','Stocked','Log complete','Product in date'] },
+  { id:'nacho', title:'Nacho Dispenser', items:['Clean','Stocked','Log up to date','Product in date'] },
+  { id:'gelato', title:'Gelato Case', items:['Clean','Stocked','No craters','Fresh','Log up to date'] }
+];
+
+// ── PIN ──
+function checkPin(){
+  var val = document.getElementById('pin-input').value;
+  if(val === ADMIN_PIN){
+    sessionStorage.setItem('kfs_admin', '1');
+    document.getElementById('pin-gate').classList.add('hidden');
+    document.getElementById('main-app').style.display = '';
+    loadData();
+  } else {
+    document.getElementById('pin-err').style.display = 'block';
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-input').focus();
+  }
+}
+
+function lock(){
+  sessionStorage.removeItem('kfs_admin');
+  document.getElementById('pin-gate').classList.remove('hidden');
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-err').style.display = 'none';
+}
+
+// ── DATA ──
+var allRows = [];
+var sortKey = 'inspection_date';
+var sortDir = -1;
+
+async function loadData(){
+  document.getElementById('table-wrap').innerHTML = '<div class="loading-msg">Loading inspections…</div>';
+  try {
+    var resp = await fetch(
+      SUPABASE_URL + '/rest/v1/inspections?select=*&order=inspection_date.desc,created_at.desc&limit=500',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+    );
+    if(!resp.ok) throw new Error('HTTP ' + resp.status + ': ' + await resp.text());
+    allRows = await resp.json();
+    updateStats(allRows);
+    applyFilters();
+  } catch(err) {
+    document.getElementById('table-wrap').innerHTML = '<div class="error-msg">&#9888; Failed to load: ' + err.message + '</div>';
+  }
+}
+
+function updateStats(rows){
+  var today = new Date(); today.setHours(0,0,0,0);
+  var scores = rows.map(function(r){ return r.score; }).filter(function(s){ return s != null; });
+  var avg = scores.length ? Math.round(scores.reduce(function(a,b){ return a+b; },0)/scores.length) : null;
+  var stores = new Set(rows.map(function(r){ return r.store_num; }).filter(Boolean));
+  var overdue = rows.filter(function(r){
+    if(!r.follow_up_date || !r.no_count) return false;
+    var due = new Date(r.follow_up_date); due.setHours(0,0,0,0);
+    return due < today;
+  }).length;
+
+  document.getElementById('st-total').textContent = rows.length;
+  document.getElementById('st-avg').textContent = avg != null ? avg + '%' : '—';
+  document.getElementById('st-stores').textContent = stores.size;
+  document.getElementById('st-overdue').textContent = overdue;
+
+  var avgCard = document.getElementById('sc-avg');
+  avgCard.className = 'stat-card' + (avg == null ? '' : avg >= 80 ? ' good' : avg >= 60 ? '' : ' warn');
+  var odCard = document.getElementById('sc-overdue');
+  odCard.className = 'stat-card' + (overdue > 0 ? ' warn' : ' good');
+}
+
+function applyFilters(){
+  var storeF = document.getElementById('filter-store').value.trim().toLowerCase();
+  var inspF  = document.getElementById('filter-inspector').value.trim().toLowerCase();
+  var fromF  = document.getElementById('filter-from').value;
+  var toF    = document.getElementById('filter-to').value;
+
+  var filtered = allRows.filter(function(r){
+    if(storeF && !String(r.store_num||'').toLowerCase().includes(storeF) && !String(r.store_name||'').toLowerCase().includes(storeF)) return false;
+    if(inspF  && !String(r.inspector||'').toLowerCase().includes(inspF)) return false;
+    if(fromF  && r.inspection_date && r.inspection_date < fromF) return false;
+    if(toF    && r.inspection_date && r.inspection_date > toF)  return false;
+    return true;
+  });
+
+  filtered.sort(function(a,b){
+    var av = a[sortKey], bv = b[sortKey];
+    if(av == null) return 1; if(bv == null) return -1;
+    return sortDir * (av < bv ? -1 : av > bv ? 1 : 0);
+  });
+
+  renderTable(filtered);
+}
+
+function setSort(key){
+  if(sortKey === key) { sortDir *= -1; } else { sortKey = key; sortDir = -1; }
+  applyFilters();
+}
+
+function renderTable(rows){
+  if(rows.length === 0){
+    document.getElementById('table-wrap').innerHTML = '<div class="empty-msg">No inspections found.</div>';
+    return;
+  }
+
+  var today = new Date(); today.setHours(0,0,0,0);
+
+  function sortArrow(key){ return '<span class="sort-arrow">' + (sortKey===key ? (sortDir===-1?'▼':'▲') : '⬍') + '</span>'; }
+
+  var html = '<table><thead><tr>' +
+    '<th onclick="setSort(\'store_num\')">Store ' + sortArrow('store_num') + '</th>' +
+    '<th onclick="setSort(\'inspection_date\')">Date ' + sortArrow('inspection_date') + '</th>' +
+    '<th onclick="setSort(\'inspector\')">Inspector ' + sortArrow('inspector') + '</th>' +
+    '<th onclick="setSort(\'score\')">Score ' + sortArrow('score') + '</th>' +
+    '<th>Y / N / N/A</th>' +
+    '<th onclick="setSort(\'follow_up_date\')">Follow-up ' + sortArrow('follow_up_date') + '</th>' +
+    '<th>Status</th>' +
+    '</tr></thead><tbody>';
+
+  rows.forEach(function(r, idx){
+    var sname = r.store_name || STORE_NAMES[String(r.store_num)] || '';
+    var storeLabel = r.store_num ? '#' + r.store_num + (sname ? ' ' + sname : '') : '—';
+    var dateLabel  = r.inspection_date ? fmtDate(r.inspection_date) : '—';
+    var insp       = r.inspector || '—';
+    var score      = r.score != null ? r.score : null;
+    var scorePill  = score == null ? '<span style="color:#bbb">—</span>' :
+                     '<span class="score-pill ' + (score>=80?'score-hi':score>=60?'score-mid':'score-lo') + '">' + score + '%</span>';
+    var counts = (r.yes_count||0) + ' / ' + (r.no_count||0) + ' / ' + (r.na_count||0);
+    var statusPill = makeStatus(r, today);
+    var rowId = 'row_' + idx;
+
+    html += '<tr class="data-row" onclick="toggleDetail(\'' + rowId + '\')">' +
+      '<td><strong>' + esc(storeLabel) + '</strong></td>' +
+      '<td>' + esc(dateLabel) + '</td>' +
+      '<td>' + esc(insp) + '</td>' +
+      '<td>' + scorePill + '</td>' +
+      '<td style="color:#666">' + counts + '</td>' +
+      '<td style="font-size:12px">' + (r.follow_up_date ? fmtDate(r.follow_up_date) : '—') + '</td>' +
+      '<td>' + statusPill + '</td>' +
+      '</tr>' +
+      '<tr class="detail-row" id="' + rowId + '"><td colspan="7"><div class="detail-inner" id="di_' + rowId + '">' + buildDetail(r) + '</div></td></tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('table-wrap').innerHTML = html;
+}
+
+function toggleDetail(rowId){
+  var di = document.getElementById('di_' + rowId);
+  di.classList.toggle('open');
+}
+
+function buildDetail(r){
+  var sname = r.store_name || STORE_NAMES[String(r.store_num)] || '—';
+  var staffing = r.staffing || {};
+  var answers  = r.answers  || {};
+
+  var noItems = [];
+  SECTIONS.forEach(function(sec){
+    sec.items.forEach(function(item, i){
+      var k = sec.id + '_' + i;
+      if(answers[k] === 'no') noItems.push('[' + sec.title + '] ' + item);
+    });
+  });
+
+  var html = '<div class="detail-grid">' +
+    df('Store', '#' + (r.store_num||'—') + (sname && sname!=='—' ? ' – ' + sname : '')) +
+    df('Date', r.inspection_date ? fmtDate(r.inspection_date) : '—') +
+    df('Time', r.inspection_time || '—') +
+    df('Inspector', r.inspector || '—') +
+    df('Score', r.score != null ? r.score + '%' : '—') +
+    df('Follow-up', r.follow_up_date ? fmtDate(r.follow_up_date) : '—') +
+    df('YES / NO / N/A', (r.yes_count||0) + ' / ' + (r.no_count||0) + ' / ' + (r.na_count||0)) +
+    df('Staffing – Schedule', staffing.sched || '—') +
+    df('Staffing – Kitchen', staffing.kitchen || '—') +
+    df('Staffing – Front', staffing.front || '—') +
+    df('Staffing – Needed', staffing.needed || '—') +
+    df('Record ID', r.id || '—') +
+    '</div>';
+
+  if(noItems.length){
+    html += '<div class="no-items-list"><h4>&#10060; NO items (' + noItems.length + ')</h4><ul>' +
+      noItems.map(function(it){ return '<li>' + esc(it) + '</li>'; }).join('') +
+      '</ul></div>';
+  }
+
+  if(r.notes && r.notes.trim()){
+    html += '<div style="margin-top:10px;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.04em;">Notes</div>' +
+            '<div class="notes-box">' + esc(r.notes) + '</div>';
+  }
+
+  if(Object.keys(answers).length){
+    html += '<div class="section-list">';
+    SECTIONS.forEach(function(sec){
+      html += '<h4>' + esc(sec.title) + '</h4>';
+      sec.items.forEach(function(item, i){
+        var k = sec.id + '_' + i;
+        var v = answers[k];
+        var lbl = v==='yes'?'YES':v==='no'?'NO':v==='na'?'N/A':'—';
+        var cls = v==='yes'?'lbl-yes':v==='no'?'lbl-no':v==='na'?'lbl-na':'lbl-nil';
+        html += '<div class="answer-row"><span class="answer-lbl ' + cls + '">' + lbl + '</span><span class="answer-text">' + esc(item) + '</span></div>';
+      });
+    });
+    html += '</div>';
+  }
+
+  return html;
+}
+
+function df(label, val){
+  return '<div class="detail-field"><label>' + label + '</label><p>' + esc(String(val)) + '</p></div>';
+}
+
+function makeStatus(r, today){
+  if(!r.follow_up_date) return '<span class="status-pill status-none">No follow-up</span>';
+  if(!r.no_count)       return '<span class="status-pill status-ok">All pass</span>';
+  var due = new Date(r.follow_up_date); due.setHours(0,0,0,0);
+  var diff = Math.round((due - today) / 86400000);
+  if(diff < 0)  return '<span class="status-pill status-overdue">Overdue ' + Math.abs(diff) + 'd</span>';
+  if(diff <= 2) return '<span class="status-pill status-due">Due in ' + diff + 'd</span>';
+  return '<span class="status-pill status-ok">Due ' + fmtDate(r.follow_up_date) + '</span>';
+}
+
+function fmtDate(d){
+  if(!d) return '—';
+  var parts = d.split('-');
+  if(parts.length !== 3) return d;
+  return parts[1] + '/' + parts[2] + '/' + parts[0];
+}
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── CSV EXPORT ──
+function exportCSV(){
+  if(!allRows.length){ alert('No data loaded.'); return; }
+
+  var fromF = document.getElementById('filter-from').value;
+  var toF   = document.getElementById('filter-to').value;
+  var storeF= document.getElementById('filter-store').value.trim().toLowerCase();
+  var inspF = document.getElementById('filter-inspector').value.trim().toLowerCase();
+
+  var rows = allRows.filter(function(r){
+    if(storeF && !String(r.store_num||'').toLowerCase().includes(storeF) && !String(r.store_name||'').toLowerCase().includes(storeF)) return false;
+    if(inspF  && !String(r.inspector||'').toLowerCase().includes(inspF)) return false;
+    if(fromF  && r.inspection_date && r.inspection_date < fromF) return false;
+    if(toF    && r.inspection_date && r.inspection_date > toF)  return false;
+    return true;
+  });
+
+  var header = 'ID,Store #,Store Name,Date,Time,Inspector,Score %,YES,NO,N/A,Total Qs,Follow-up Date,Notes';
+  var lines  = [header];
+  rows.forEach(function(r){
+    var cells = [
+      r.id||'',
+      r.store_num||'',
+      r.store_name||STORE_NAMES[String(r.store_num)]||'',
+      r.inspection_date||'',
+      r.inspection_time||'',
+      r.inspector||'',
+      r.score!=null?r.score+'%':'',
+      r.yes_count||0,
+      r.no_count||0,
+      r.na_count||0,
+      r.total_questions||'',
+      r.follow_up_date||'',
+      '"'+(r.notes||'').replace(/"/g,'""')+'"'
+    ];
+    lines.push(cells.join(','));
+  });
+
+  var blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = 'KeithsFS_Admin_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', function(){
+  if(sessionStorage.getItem('kfs_admin') === '1'){
+    document.getElementById('pin-gate').classList.add('hidden');
+    document.getElementById('main-app').style.display = '';
+    loadData();
+  }
+  document.getElementById('pin-input').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') checkPin();
+  });
+});
+</script>
+
+</body>
+</html>
