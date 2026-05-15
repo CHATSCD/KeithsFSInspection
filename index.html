@@ -786,8 +786,7 @@ function exportPDF(){
           for(var pi=0;pi<pics.length;pi++){
             if(px+tw>W-36){px=72;y+=th+gap;}
             chkY(th+gap+4);
-            try{ doc.addImage(pics[pi],'JPEG',px,y,tw,th,undefined,'FAST'); }
-            catch(e){ try{ doc.addImage(pics[pi],'PNG',px,y,tw,th,undefined,'FAST'); }catch(e2){} }
+            try{ doc.addImage(pics[pi],'AUTO',px,y,tw,th,undefined,'FAST'); }catch(e){}
             px+=tw+gap;
           }
           y+=th+gap+6;
@@ -844,8 +843,7 @@ function exportPDF(){
               for(var pi2=0;pi2<pics2.length;pi2++){
                 if(px2+tw2>W-36){px2=52;y+=th2+gap2;}
                 chkY(th2+gap2+4);
-                try{ doc.addImage(pics2[pi2],'JPEG',px2,y,tw2,th2,undefined,'FAST'); }
-                catch(e3){ try{ doc.addImage(pics2[pi2],'PNG',px2,y,tw2,th2,undefined,'FAST'); }catch(e4){} }
+                try{ doc.addImage(pics2[pi2],'AUTO',px2,y,tw2,th2,undefined,'FAST'); }catch(e3){}
                 px2+=tw2+gap2;
               }
               y+=th2+gap2+4;
