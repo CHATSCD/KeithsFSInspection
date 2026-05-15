@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Keith's F.S. Inspection</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f0ed; color: #1a1a1a; min-height: 100vh; }
+
+.app-header { background: #1a2744; color: white; padding: 14px 16px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.header-icon { width: 34px; height: 34px; background: #c8a84b; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.header-text .store-label { font-size: 11px; opacity: 0.6; letter-spacing: 0.05em; text-transform: uppercase; }
+.header-text h1 { font-size: 17px; font-weight: 600; }
+
+.meta-card { background: white; margin: 12px; border-radius: 12px; border: 1px solid #e0e0dc; padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-group label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
+.field-group input { width: 100%; border: 1px solid #d0d0cc; border-radius: 8px; padding: 9px 10px; font-size: 15px; background: #f8f8f5; color: #1a1a1a; }
+.field-group input:focus { outline: none; border-color: #1a2744; }
+
+.followup-banner { margin: 0 12px 10px; background: #fff8ec; border: 1px solid #e8c97a; border-radius: 12px; padding: 11px 14px; font-size: 13px; color: #7a4f0a; display: none; align-items: center; gap: 8px; }
+.followup-banner.show { display: flex; }
+
+.progress-wrap { background: white; margin: 0 12px 10px; border-radius: 10px; border: 1px solid #e0e0dc; padding: 11px 14px; }
+.progress-top { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-bottom: 6px; }
+.progress-track { height: 7px; background: #ebebeb; border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: #1a2744; border-radius: 4px; transition: width 0.3s; }
+
+.section { background: white; margin: 0 12px 10px; border-radius: 12px; border: 1px solid #e0e0dc; overflow: hidden; }
+.sec-header { padding: 13px 14px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sec-header:active { background: #f5f5f2; }
+.sec-left { display: flex; align-items: center; gap: 9px; }
+.sec-icon { font-size: 20px; }
+.sec-title { font-size: 15px; font-weight: 600; color: #1a2744; }
+.sec-right { display: flex; align-items: center; gap: 8px; }
+.sec-badge { font-size: 11px; background: #f0f0ec; border-radius: 20px; padding: 3px 9px; color: #888; font-weight: 500; }
+.sec-badge.all-pass { background: #eaf5e0; color: #2d7a12; }
+.sec-badge.has-fail { background: #fdeaea; color: #b52222; }
+.chevron { font-size: 18px; color: #bbb; display: inline-block; transition: transform 0.2s; }
+.chevron.open { transform: rotate(180deg); }
+
+.sec-body { border-top: 1px solid #f0f0ec; display: none; }
+.sec-body.open { display: block; }
+
+.c-item { border-bottom: 1px solid #f0f0ec; }
+.c-item:last-child { border-bottom: none; }
+.item-row { padding: 11px 14px; display: flex; align-items: flex-start; gap: 8px; }
+.item-text { flex: 1; font-size: 14px; line-height: 1.45; color: #222; padding-top: 5px; }
+.item-controls { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
+
+.btn-yn { height: 34px; width: 44px; border-radius: 8px; border: 1px solid #d8d8d4; background: #f5f5f2; font-size: 12px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; color: #888; }
+.btn-yn:active { transform: scale(0.94); }
+.btn-yn.yes-on { background: #e8f5dc; border-color: #6ab03a; color: #2a6b10; }
+.btn-yn.no-on  { background: #fdeaea; border-color: #e05050; color: #b52222; }
+.btn-na { height: 34px; width: 38px; border-radius: 8px; border: 1px solid #e0e0dc; background: transparent; font-size: 11px; cursor: pointer; color: #bbb; -webkit-tap-highlight-color: transparent; }
+.btn-na.na-on { background: #fff3de; border-color: #d4a030; color: #7a5008; }
+.btn-cam { height: 34px; width: 34px; border-radius: 8px; border: 1px solid #e0e0dc; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; -webkit-tap-highlight-color: transparent; flex-shrink: 0; }
+.btn-cam.has-pic { background: #e8f0fc; border-color: #4a80d0; }
+.btn-cam:active { transform: scale(0.94); }
+
+.photo-zone { padding: 0 14px 12px; display: none; }
+.photo-zone.open { display: block; }
+.photo-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.thumb { position: relative; width: 74px; height: 74px; border-radius: 8px; overflow: hidden; border: 1px solid #ddd; flex-shrink: 0; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb .del { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.6); border: none; color: white; font-size: 13px; cursor: pointer; line-height: 20px; text-align: center; padding: 0; }
+.add-tile { width: 74px; height: 74px; border-radius: 8px; border: 1.5px dashed #ccc; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; background: #fafafa; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+.add-tile span { font-size: 10px; color: #aaa; }
+.add-tile .plus { font-size: 24px; color: #ccc; line-height: 1; }
+input[type=file] { display: none; }
+
+.maint-zone { display: none; margin: 0 14px 12px; background: #fff8f0; border: 1.5px solid #e87a20; border-radius: 10px; padding: 13px; }
+.maint-zone.open { display: block; }
+.maint-zone h4 { font-size: 13px; font-weight: 700; color: #b84c00; margin-bottom: 10px; }
+.maint-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.maint-grid .full { grid-column: 1/-1; }
+.maint-grid label { font-size: 10px; color: #a06030; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 3px; }
+.maint-grid input, .maint-grid select, .maint-grid textarea { width: 100%; border: 1px solid #e0b080; border-radius: 7px; padding: 8px 9px; font-size: 14px; background: #fffcf8; font-family: inherit; color: #1a1a1a; }
+.maint-grid textarea { min-height: 64px; resize: vertical; }
+.btn-maint { width: 100%; margin-top: 10px; padding: 11px; border-radius: 8px; background: #e87a20; color: white; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+.maint-sent { display: none; margin-top: 8px; background: #e8f5dc; border-radius: 7px; padding: 9px 12px; font-size: 13px; color: #2a6b10; font-weight: 500; }
+.maint-sent.show { display: block; }
+
+.staffing-card { background: white; margin: 0 12px 10px; border-radius: 12px; border: 1px solid #e0e0dc; padding: 14px; }
+.staffing-card h2 { font-size: 15px; font-weight: 600; color: #1a2744; margin-bottom: 10px; }
+.staffing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.staffing-grid label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
+.staffing-grid input { width: 100%; border: 1px solid #d0d0cc; border-radius: 8px; padding: 9px 10px; font-size: 15px; background: #f8f8f5; }
+
+.notes-card { background: white; margin: 0 12px 10px; border-radius: 12px; border: 1px solid #e0e0dc; padding: 14px; }
+.notes-card h2 { font-size: 15px; font-weight: 600; color: #1a2744; margin-bottom: 8px; }
+.notes-card textarea { width: 100%; border: 1px solid #d0d0cc; border-radius: 8px; padding: 10px; font-size: 14px; min-height: 90px; resize: vertical; background: #f8f8f5; font-family: inherit; color: #1a1a1a; }
+
+.actions { margin: 0 12px 28px; display: flex; flex-direction: column; gap: 10px; }
+.btn-export { width: 100%; padding: 15px; border-radius: 12px; background: #1a2744; color: white; border: none; font-size: 16px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.btn-export:active { opacity: 0.88; }
+.btn-sheets { width: 100%; padding: 13px; border-radius: 12px; background: #1a7a3c; color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.btn-sheets:active { opacity: 0.88; }
+.export-note { font-size: 11px; color: #999; text-align: center; margin-top: -4px; }
+
+/* Sheets Modal */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-end; }
+.modal-bg.open { display: flex; }
+.modal-panel { background: white; border-radius: 20px 20px 0 0; padding: 20px 20px 32px; width: 100%; max-height: 85vh; overflow-y: auto; }
+.modal-panel h3 { font-size: 16px; font-weight: 700; color: #1a2744; margin-bottom: 6px; }
+.modal-panel .sub { font-size: 13px; color: #666; margin-bottom: 14px; }
+.steps { list-style: none; counter-reset: s; margin-bottom: 14px; }
+.steps li { counter-increment: s; display: flex; gap: 10px; margin-bottom: 11px; font-size: 13.5px; line-height: 1.5; align-items: flex-start; }
+.steps li::before { content: counter(s); min-width: 22px; height: 22px; background: #1a2744; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+.csv-preview { background: #f5f5f2; border-radius: 8px; padding: 10px; font-size: 11px; font-family: monospace; color: #333; word-break: break-all; max-height: 100px; overflow-y: auto; margin-bottom: 12px; white-space: pre-wrap; border: 1px solid #ddd; }
+.btn-dl { width: 100%; padding: 14px; border-radius: 10px; background: #1a7a3c; color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 8px; }
+.btn-close { width: 100%; padding: 11px; border-radius: 10px; background: transparent; color: #888; border: 1px solid #ddd; font-size: 14px; cursor: pointer; }
+</style>
+
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-icon">&#128203;</div>
+  <div class="header-text">
+    <div class="store-label">Keith's Superstore</div>
+    <h1>F.S. Inspection</h1>
+  </div>
+</div>
+
+<div class="meta-card">
+  <div class="field-group">
+    <label>Store #</label>
+    <input type="text" id="store-num" placeholder="e.g. 107" oninput="updateFollowUp();updateStoreName()">
+    <div id="store-name-display" style="font-size:13px;font-weight:600;color:#1a2744;margin-top:5px;min-height:18px;"></div>
+  </div>
+  <div class="field-group"><label>Date</label><input type="date" id="insp-date" oninput="updateFollowUp()"></div>
+  <div class="field-group"><label>DM / Inspector</label><input type="text" id="dm-name" placeholder="Your name"></div>
+  <div class="field-group"><label>Time</label><input type="time" id="insp-time"></div>
+</div>
+
+<div class="followup-banner" id="fu-banner">
+  &#128197; Follow-up due: <strong id="fu-date">--</strong> &nbsp;(Store has 7 days to fix all NO items)
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-top"><span>Progress</span><span id="prog-text">0 / 0</span></div>
+  <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+</div>
+
+<div id="sections"></div>
+
+<div class="staffing-card">
+  <h2>Staffing</h2>
+  <div class="staffing-grid">
+    <div><label>On Schedule</label><input type="text" id="s-sched" placeholder="e.g. 4"></div>
+    <div><label>Kitchen</label><input type="text" id="s-kitchen" placeholder="e.g. 2"></div>
+    <div><label>Front</label><input type="text" id="s-front" placeholder="e.g. 2"></div>
+    <div><label>Needed</label><input type="text" id="s-needed" placeholder="e.g. 1"></div>
+  </div>
+</div>
+
+<div class="notes-card">
+  <h2>Notes</h2>
+  <textarea id="notes" placeholder="Add notes, observations, or follow-up items..."></textarea>
+</div>
+
+<div class="actions">
+  <button class="btn-export" onclick="exportPDF()">&#128196; Export PDF Report</button>
+  <p class="export-note">Photos on NO items are embedded in the PDF</p>
+  <button class="btn-sheets" onclick="openSheetsModal()">&#128202; Download CSV for Google Sheets</button>
+</div>
+
+<!-- Sheets Modal -->
+
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeSheetsModal()">
+  <div class="modal-panel">
+    <h3>&#128202; Log to Google Sheets</h3>
+    <p class="sub">Download this inspection as a CSV — open Sheets and import it to your tracker.</p>
+    <ol class="steps">
+      <li>Tap <strong>Download CSV</strong> below</li>
+      <li>Open <strong>sheets.google.com</strong> and open your inspection tracker (or create one)</li>
+      <li><strong>File &rarr; Import &rarr; Upload</strong> the CSV file — choose <em>"Append to current sheet"</em></li>
+      <li>The <strong>Follow-up Date</strong> column is included — use Conditional Formatting to highlight overdue rows in red</li>
+    </ol>
+    <p style="font-size:11px;color:#999;margin-bottom:6px;">CSV preview (this inspection):</p>
+    <div class="csv-preview" id="csv-preview"></div>
+    <button class="btn-dl" onclick="downloadCSV()">&#11015; Download CSV</button>
+    <button class="btn-close" onclick="closeSheetsModal()">Close</button>
+  </div>
+</div>
+
+<script>
+const SECTIONS = [
+  { id:'storerooms', title:'Storerooms', icon:'&#127978;', items:[
+    'Rotation of food supplies',
+    'All items covered, labeled, dated',
+    'Items stored on racks 6 inches from floor',
+    'Cleaning supplies stored in separate area',
+    'Shelves clean and free of dust',
+    'Walls, floors, ceilings, vents and doors clean',
+    'No signs of rodent/insect infestation'
+  ]},
+  { id:'refrigerator', title:'Refrigerator', icon:'&#10052;', items:[
+    'Shelves, racks, walls, floors, ceiling and doors clean',
+    'Interior, refrigerator fans clear and free of dust or ice',
+    'Thermometer visible and temperature 41F or below',
+    'Refrigerator temps logged daily',
+    'Raw food items stored below cooked food items',
+    'Food items dated and labeled',
+    'Food items discarded after 72 hours'
+  ]},
+  { id:'freezers', title:'Freezers', icon:'&#129398;', items:[
+    'All food covered, labeled and dated',
+    'All items stored on racks, allowing proper air circulation',
+    'Shelves, racks, walls, floors, ceiling and doors clean and free from ice build up',
+    'Thermometer visible and temperature 0F or below',
+    'Freezer temperature logged daily'
+  ]},
+  { id:'inventory', title:'Inventory', icon:'&#128230;', items:[
+    'Items organized and labeled for counts',
+    'Counts by sleeve and boxes confirmed',
+    'Counts done by same person',
+    'Counts done same day/time',
+    'Pricing updated when invoices come in with weekly products',
+    'Are there items that are not being used',
+    'Pricing is up to date/current with weeks received on all forms'
+  ]},
+  { id:'pizza', title:'Pizza Station', icon:'&#127829;', items:[
+    'Clean and free of toppings used to make previous pizza',
+    'Cutting utensil, knives and board wiped down and disinfected',
+    'Topping drained and refilled - all topping accounted for',
+    'All pizza crusts are stocked',
+    'Boxes are premade for hunks and call ins',
+    'Hot box displayed filled with pizza',
+    'Hot box display wiped down and clean behind and in front',
+    'Pizza time labeled of when made on box',
+    'Pizza variety in stock at time of inspection'
+  ]},
+  { id:'sink', title:'3 Compartment Sink', icon:'&#128703;', items:[
+    'Sanitizing solution test kit available and used',
+    'All items are air dried',
+    'Storage racks, walls and floor are clean',
+    '3 Compartment Sink log PPM recorded daily',
+    'Scrubbers/rags in clean order',
+    'All food prep equipment, utensils cleaned, sanitized and stored properly'
+  ]},
+  { id:'sanitation', title:'General Sanitation', icon:'&#129529;', items:[
+    'Daily cleaning schedule completed and followed',
+    'Handwashing procedures posted at hand washing sink',
+    'Towel and soap dispensers filled and working',
+    'All floors, walls, ceilings and work areas are clean',
+    'All work tables and drawers clean and neat',
+    'Hood filters clean and regularly scheduled to be cleaned',
+    'Gloves worn by employees per facility policy and procedure to serve food',
+    'Smoker cleaned out and ready',
+    'Steamer wiped down and drained',
+    'Heat boxes wiped down and off',
+    'Heated grab and go wiped down of crumbs, organized and clean',
+    'Hot box wiped down and glass cleaned inside and out',
+    'Trash taken out, boxes broken down',
+    'Griddle grease drain cleaned, disposed of daily into grease trap',
+    'Fryers filtered each day after use'
+  ]},
+  { id:'front', title:'Front of House', icon:'&#127968;', items:[
+    'Dining room tables and seats wiped down',
+    'Drink stations wiped down, free of trash',
+    'Dining room trash cans overflowing',
+    'Fresh cookies and pastries in bakery case; are they labeled',
+    'Condiments refilled and organized',
+    'Windows/Doors are wiped down, no smudges',
+    'Entrance way swept',
+    'Swept under seating',
+    'Coffee/Tea urns wiped down',
+    'Inventory organized in cabinets for access',
+    'Cups, lids, straws, condiments stocked'
+  ]},
+  { id:'entering', title:'Upon Entering Store', icon:'&#128682;', items:[
+    'Greeted with "Welcome to Keith\'s"',
+    'Entrance area free of garbage/trash',
+    'Garbage cans recently pulled',
+    'Cigarette post at least 6 feet from doorways'
+  ]},
+  { id:'icecream', title:'Ice Cream Machines', icon:'&#127846;', maintenanceItem:1, items:[
+    'Ice cream log fully filled out',
+    'Machine working properly',
+    'Machine cleaned within last 7 days - Week 1 (verify on log)',
+    'Machine cleaned within last 7 days - Week 2 (verify on log)',
+    'Machine cleaned within last 7 days - Week 3 (verify on log)',
+    'Machine cleaned within last 7 days - Week 4 (verify on log)'
+  ]},
+  { id:'bakerycase', title:'Bakery Case', icon:'&#129360;', items:[
+    'Bakery case full for customers',
+    'Bakery case clean',
+    'Log complete',
+    'All products / shelves dated',
+    'All products in date'
+  ]},
+  { id:'pretzel', title:'Pretzel Warmer', icon:'&#129384;', items:[
+    'Clean',
+    'Stocked',
+    'Log complete',
+    'Product in date'
+  ]},
+  { id:'nacho', title:'Nacho Dispenser', icon:'&#129472;', items:[
+    'Clean',
+    'Stocked',
+    'Log up to date',
+    'Product in date'
+  ]},
+  { id:'gelato', title:'Gelato Case', icon:'&#127848;', items:[
+    'Clean',
+    'Stocked',
+    'No craters',
+    'Fresh',
+    'Log up to date'
+  ]}
+];
+
+const STORE_NAMES = {
+  '59':'Moselle','60':'Lumberton','61':'Wiggins','62':'Sumrall','63':'Petal',
+  '64':'Purvis','65':'Poplarville','66':'Hattiesburg','67':'Hattiesburg',
+  '68':'Hattiesburg','69':'Columbia','70':'Tylertown','71':'Monticello',
+  '72':'Brookhaven','73':'Hazlehurst','74':'Crystal Springs','75':'Mendenhall',
+  '76':'Magee','77':'Collins','78':'Seminary','79':'Laurel','80':'Laurel',
+  '81':'Ellisville','82':'Hurley','83':'Pascagoula','84':'Gautier',
+  '85':'Moss Point','86':'Ocean Springs','87':'Biloxi','88':'Gulfport',
+  '89':'Gulfport','90':'Long Beach','91':'Pass Christian','92':'Bay St. Louis',
+  '93':'Waveland','94':'Picayune','95':'Poplarville','96':'Carriere',
+  '97':'Slidell','98':'Covington','99':'Mandeville','100':'Madisonville',
+  '101':'Hammond','102':'Ponchatoula','103':'Amite','104':'Franklinton',
+  '105':'Bogalusa','106':'Poplarville','107':'Saucier','108':'DIberville',
+  '109':'Diberville','110':'Biloxi','196':'Poplarville'
+};
+
+function getStoreName(n){ return STORE_NAMES[String(n).trim()]||''; }
+function updateStoreName(){
+  const n=document.getElementById('store-num').value;
+  const name=getStoreName(n);
+  document.getElementById('store-name-display').textContent=name?'>> '+name:'';
+}
+
+const answers={}, photos={};
+SECTIONS.forEach(s=>s.items.forEach((_,i)=>{ const k=s.id+'_'+i; answers[k]=null; photos[k]=[]; }));
+
+// BUILD
+function build(){
+  const wrap=document.getElementById('sections');
+  SECTIONS.forEach(sec=>{
+    const div=document.createElement('div'); div.className='section'; div.id='sec_'+sec.id;
+    let html=`<div class="sec-header" onclick="toggle('${sec.id}')">
+      <div class="sec-left"><span class="sec-icon">${sec.icon}</span><span class="sec-title">${sec.title}</span></div>
+      <div class="sec-right"><span class="sec-badge" id="badge_${sec.id}">0/${sec.items.length}</span><span class="chevron" id="chev_${sec.id}">&#9662;</span></div>
+    </div><div class="sec-body" id="body_${sec.id}">`;
+
+    sec.items.forEach((item,i)=>{
+      const k=sec.id+'_'+i, isMaint=sec.maintenanceItem===i;
+      html+=`<div class="c-item">
+        <div class="item-row">
+          <span class="item-text">${item}</span>
+          <div class="item-controls">
+            <button class="btn-yn" id="yes_${k}" onclick="pick('${k}','yes')">YES</button>
+            <button class="btn-yn" id="no_${k}" onclick="pick('${k}','no')">NO</button>
+            <button class="btn-na" id="na_${k}" onclick="pick('${k}','na')">N/A</button>
+            <button class="btn-cam" id="cam_${k}" onclick="togglePhoto('${k}')">&#128247;</button>
+          </div>
+        </div>
+        <div class="photo-zone" id="pz_${k}">
+          <div class="photo-row" id="pr_${k}"><div class="add-tile" onclick="triggerFile('${k}')"><span class="plus">+</span><span>Add photo</span></div></div>
+          <input type="file" id="fi_${k}" accept="image/*" capture="environment" multiple onchange="gotFiles('${k}',this)">
+        </div>
+        ${isMaint?`<div class="maint-zone" id="maint_${k}">
+          <h4>&#128295; Maintenance Ticket Required</h4>
+          <div class="maint-grid">
+            <div><label>Store #</label><input type="text" id="mt_store_${k}" placeholder="107"></div>
+            <div><label>Date</label><input type="date" id="mt_date_${k}"></div>
+            <div><label>Reported By</label><input type="text" id="mt_rep_${k}" placeholder="Your name"></div>
+            <div><label>Priority</label><select id="mt_pri_${k}"><option>Urgent</option><option>High</option><option selected>Normal</option></select></div>
+            <div class="full"><label>Equipment</label><input type="text" id="mt_equip_${k}" value="Ice Cream Machine"></div>
+            <div class="full"><label>Issue Description</label><textarea id="mt_issue_${k}" placeholder="Describe the issue..."></textarea></div>
+
+```
+      </div>
+      <button class="btn-maint" onclick="submitMaint('${k}')">Generate Maintenance Ticket</button>
+      <div class="maint-sent" id="ms_${k}"></div>
+    </div>`:''}
+  </div>`;
+});
+html+='</div>'; div.innerHTML=html; wrap.appendChild(div);
+```
+
+});
+updateProg();
+}
+
+function toggle(id){
+document.getElementById(‘body_’+id).classList.toggle(‘open’);
+document.getElementById(‘chev_’+id).classList.toggle(‘open’);
+}
+
+function pick(k,val){
+answers[k]=val;
+[‘yes’,‘no’,‘na’].forEach(v=>{ const el=document.getElementById((v===‘na’?‘na’:v)+’*’+k); if(el) el.className=el.className.replace(/ (yes-on|no-on|na-on)/g,’’); });
+document.getElementById((val===‘na’?‘na’:val)+’*’+k).classList.add(val===‘yes’?‘yes-on’:val===‘no’?‘no-on’:‘na-on’);
+if(val===‘no’) document.getElementById(‘pz_’+k).classList.add(‘open’);
+const mz=document.getElementById(‘maint_’+k); if(mz) mz.classList.toggle(‘open’,val===‘no’);
+updateBadge(k.split(’_’)[0]); updateProg();
+}
+
+function togglePhoto(k){ document.getElementById(‘pz_’+k).classList.toggle(‘open’); }
+function triggerFile(k){ document.getElementById(‘fi_’+k).click(); }
+function gotFiles(k,inp){
+Array.from(inp.files).forEach(f=>{ const r=new FileReader(); r.onload=e=>{ photos[k].push(e.target.result); renderThumbs(k); refreshCam(k); }; r.readAsDataURL(f); });
+inp.value=’’;
+}
+function renderThumbs(k){
+const row=document.getElementById(‘pr_’+k); row.innerHTML=’’;
+photos[k].forEach((src,i)=>{ const d=document.createElement(‘div’); d.className=‘thumb’; d.innerHTML=`<img src="${src}"><button class="del" onclick="delPhoto('${k}',${i})">x</button>`; row.appendChild(d); });
+const a=document.createElement(‘div’); a.className=‘add-tile’; a.onclick=()=>triggerFile(k); a.innerHTML=’<span class="plus">+</span><span>Add photo</span>’; row.appendChild(a);
+}
+function delPhoto(k,i){ photos[k].splice(i,1); renderThumbs(k); refreshCam(k); }
+function refreshCam(k){
+const btn=document.getElementById(‘cam_’+k), n=photos[k].length;
+btn.className=‘btn-cam’+(n>0?’ has-pic’:’’);
+btn.innerHTML=n>0?’📷 ‘+n:’📷’;
+}
+function updateBadge(secId){
+const sec=SECTIONS.find(s=>s.id===secId);
+const ans=sec.items.filter((*,i)=>answers[secId+’*’+i]!==null).length;
+const nos=sec.items.filter((*,i)=>answers[secId+’*’+i]===‘no’).length;
+const badge=document.getElementById(‘badge_’+secId);
+badge.textContent=ans+’/’+sec.items.length;
+badge.className=‘sec-badge’+(nos>0?’ has-fail’:ans===sec.items.length?’ all-pass’:’’);
+}
+function updateProg(){
+const total=Object.keys(answers).length, done=Object.values(answers).filter(v=>v!==null).length;
+document.getElementById(‘prog-text’).textContent=done+’ / ‘+total;
+document.getElementById(‘prog-fill’).style.width=(total?Math.round(done/total*100):0)+’%’;
+}
+function getFollowUp(){
+const d=document.getElementById(‘insp-date’).value; if(!d) return ‘’;
+const dt=new Date(d+‘T12:00:00’); dt.setDate(dt.getDate()+7);
+return dt.toLocaleDateString(‘en-US’,{weekday:‘short’,month:‘short’,day:‘numeric’,year:‘numeric’});
+}
+function updateFollowUp(){
+const fu=getFollowUp(), banner=document.getElementById(‘fu-banner’);
+if(fu){ document.getElementById(‘fu-date’).textContent=fu; banner.classList.add(‘show’); }
+else banner.classList.remove(‘show’);
+}
+function submitMaint(k){
+const store=document.getElementById(‘mt_store_’+k).value||document.getElementById(‘store-num’).value||’***’;
+const date=document.getElementById(’mt_date*’+k).value||document.getElementById(‘insp-date’).value||’***’;
+const rep=document.getElementById(’mt_rep*’+k).value||document.getElementById(‘dm-name’).value||’***’;
+const pri=document.getElementById(’mt_pri*’+k).value||‘Normal’;
+const equip=document.getElementById(’mt_equip*’+k).value||‘Ice Cream Machine’;
+const issue=document.getElementById(’mt_issue*’+k).value||‘Not working properly.’;
+const num=‘MNT-’+Date.now().toString().slice(-6);
+document.getElementById(‘ms_’+k).innerHTML=‘Ticket ‘+num+’ — ‘+pri+’ priority | ‘+equip+’ | Store #’+store+’ | ‘+date+’<br><small>’+rep+’: “’+issue+’”</small>’;
+document.getElementById(‘ms_’+k).classList.add(‘show’);
+window._tickets=window._tickets||{}; window._tickets[k]={num,store,date,rep,pri,equip,issue};
+}
+
+// CSV / SHEETS
+function buildCSV(){
+const store=document.getElementById(‘store-num’).value||’’;
+const sname=getStoreName(store);
+const date=document.getElementById(‘insp-date’).value||’’;
+const dm=document.getElementById(‘dm-name’).value||’’;
+const time=document.getElementById(‘insp-time’).value||’’;
+const notes=(document.getElementById(‘notes’).value||’’).replace(/”/g,’””’);
+const fu=getFollowUp();
+const yes=Object.values(answers).filter(v=>v===‘yes’).length;
+const no=Object.values(answers).filter(v=>v===‘no’).length;
+const na=Object.values(answers).filter(v=>v===‘na’).length;
+const done=Object.values(answers).filter(v=>v!==null).length;
+const total=Object.keys(answers).length;
+const score=done>0?Math.round((yes+na)/done*100):0;
+const noItems=[];
+SECTIONS.forEach(sec=>sec.items.forEach((item,i)=>{ if(answers[sec.id+’*’+i]===‘no’) noItems.push(’[’+sec.title+’] ‘+item); }));
+const noList=noItems.join(’ | ‘).replace(/”/g,’””’);
+const header=‘Store #,Store Name,Inspection Date,Time,Inspector,Score %,YES Count,NO Count,N/A Count,Total Questions,Answered,Follow-up Date,Status,NO Items,Notes’;
+const row=[store,sname,date,time,dm,score+’%’,yes,no,na,total,done,fu,‘Open’,’”’+noList+’”’,’”’+notes+’”’].join(’,’);
+return {header,row};
+}
+function openSheetsModal(){
+const {header,row}=buildCSV();
+document.getElementById(‘csv-preview’).textContent=header+’\n’+row;
+document.getElementById(‘modal-bg’).classList.add(‘open’);
+}
+function closeSheetsModal(){ document.getElementById(‘modal-bg’).classList.remove(‘open’); }
+function downloadCSV(){
+const store=document.getElementById(‘store-num’).value||‘Store’;
+const date=document.getElementById(‘insp-date’).value||‘NoDate’;
+const {header,row}=buildCSV();
+const blob=new Blob([header+’\n’+row],{type:‘text/csv’});
+const url=URL.createObjectURL(blob);
+const a=document.createElement(‘a’); a.href=url; a.download=’KeithsFS*’+store+’_’+date.replace(/-/g,’’)+’.csv’;
+document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// PDF
+function clean(s){ return String(s).replace(/[^\x00-\x7E]/g,’’).trim(); }
+
+function exportPDF(){
+try{
+const store=document.getElementById(‘store-num’).value||’***’;
+const sname=getStoreName(store);
+const slabel=sname?’#’+store+’ - ‘+sname:’#’+store;
+const date=document.getElementById(‘insp-date’).value||’***’;
+const dm=document.getElementById(‘dm-name’).value||’___’;
+const time=document.getElementById(‘insp-time’).value||’’;
+const notes=document.getElementById(‘notes’).value||’’;
+const sched=document.getElementById(‘s-sched’).value||’’;
+const kitch=document.getElementById(‘s-kitchen’).value||’’;
+const front=document.getElementById(‘s-front’).value||’’;
+const needed=document.getElementById(‘s-needed’).value||’’;
+const fu=getFollowUp();
+
+```
+const {jsPDF}=window.jspdf;
+const doc=new jsPDF({unit:'pt',format:'letter'});
+const W=doc.internal.pageSize.getWidth();
+let y=0;
+const chkY=n=>{ if(y+n>730){ doc.addPage(); y=44; } };
+const T=(s,x,yy,opts)=>{ const c=clean(s); if(c) doc.text(c,x,yy,opts||undefined); };
+
+// Header
+doc.setFillColor(26,39,68); doc.rect(0,0,W,54,'F');
+doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont(undefined,'bold');
+T("Keith's Superstore - F.S. Inspection Report",36,28);
+doc.setFontSize(10); doc.setFont(undefined,'normal');
+T('Store '+slabel+'  |  Date: '+date+(time?' @ '+time:'')+'  |  Inspector: '+dm,36,46);
+
+doc.setFillColor(255,243,220); doc.rect(0,54,W,24,'F');
+doc.setTextColor(100,60,0); doc.setFontSize(10); doc.setFont(undefined,'bold');
+T('Follow-up deadline: '+(fu||'7 days from inspection date')+'  |  Store has 7 days to correct all NO items',36,70);
+
+y=92;
+
+const totalQ=Object.keys(answers).length;
+const yes=Object.values(answers).filter(v=>v==='yes').length;
+const no=Object.values(answers).filter(v=>v==='no').length;
+const na=Object.values(answers).filter(v=>v==='na').length;
+const done=Object.values(answers).filter(v=>v!==null).length;
+const score=done>0?Math.round((yes+na)/done*100):0;
+const totalPic=Object.values(photos).reduce((a,b)=>a+b.length,0);
+
+doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+T('Inspection Summary',36,y); y+=14;
+doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(50,50,50);
+T('Score: '+score+'%   YES: '+yes+'   NO: '+no+'   N/A: '+na+'   Total: '+totalQ+'   Photos: '+totalPic,36,y); y+=24;
+
+for(const sec of SECTIONS){
+  chkY(32);
+  doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
+  doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+  T(sec.title,36,y);
+  const sd=sec.items.filter((_,i)=>answers[sec.id+'_'+i]!==null).length;
+  doc.setFont(undefined,'normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
+  T(sd+'/'+sec.items.length,W-70,y); y+=9;
+
+  for(let i=0;i<sec.items.length;i++){
+    const k=sec.id+'_'+i, v=answers[k], pics=photos[k]||[];
+    const lbl=v==='yes'?'YES':v==='no'?'NO':v==='na'?'N/A':'---';
+    const rgb=v==='yes'?[42,107,16]:v==='no'?[181,34,34]:v==='na'?[130,80,8]:[170,170,170];
+    chkY(16);
+    doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(...rgb); T(lbl,38,y);
+    doc.setFont(undefined,'normal'); doc.setTextColor(35,35,35);
+    const lines=doc.splitTextToSize(clean(sec.items[i]),W-130); doc.text(lines,72,y);
+    if(pics.length){ doc.setTextColor(30,80,180); doc.setFontSize(8); T('['+pics.length+' photo'+(pics.length>1?'s':'')+']',W-72,y); }
+    y+=lines.length*12+2;
+    if(pics.length){
+      const tw=100,th=76,gap=8; let px=72;
+      for(const src of pics){
+        if(px+tw>W-36){px=72;y+=th+gap;}
+        chkY(th+gap+4);
+        try{doc.addImage(src,'JPEG',px,y,tw,th,undefined,'FAST');}catch(e){try{doc.addImage(src,'PNG',px,y,tw,th,undefined,'FAST');}catch(e2){}}
+        px+=tw+gap;
+      }
+      y+=th+gap+6;
+    }
+  }
+  y+=10;
+}
+
+if(sched||kitch||front||needed){
+  chkY(40);
+  doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
+  doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+  T('Staffing',36,y); y+=10;
+  doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
+  if(sched){T('On Schedule: '+sched,40,y);y+=14;}
+  if(kitch){T('Kitchen: '+kitch,40,y);y+=14;}
+  if(front){T('Front: '+front,40,y);y+=14;}
+  if(needed){T('Needed: '+needed,40,y);y+=14;}
+  y+=6;
+}
+
+if(notes.trim()){
+  chkY(40);
+  doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
+  doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+  T('Notes',36,y); y+=10;
+  doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
+  doc.splitTextToSize(clean(notes),W-80).forEach(l=>{chkY(14);T(l,40,y);y+=13;});
+  y+=6;
+}
+
+if(no>0){
+  chkY(44);
+  doc.setFillColor(253,230,230); doc.rect(28,y-14,W-56,22,'F');
+  doc.setTextColor(181,34,34); doc.setFontSize(11); doc.setFont(undefined,'bold');
+  T('Action Required - '+no+' item(s) marked NO',36,y); y+=10;
+  doc.setFont(undefined,'normal'); doc.setFontSize(10);
+  T('Store must correct all items below by: '+(fu||'7 days from inspection'),36,y); y+=16;
+  for(const sec of SECTIONS){
+    for(let i=0;i<sec.items.length;i++){
+      const k=sec.id+'_'+i;
+      if(answers[k]==='no'){
+        chkY(16);
+        const pics=photos[k]||[];
+        doc.setTextColor(181,34,34); T('-',40,y);
+        doc.setTextColor(50,50,50);
+        const txt='['+sec.title+'] '+clean(sec.items[i]);
+        const lines=doc.splitTextToSize(txt,W-108); doc.text(lines,52,y);
+        if(pics.length){doc.setTextColor(30,80,180);doc.setFontSize(8.5);T('['+pics.length+' photo'+(pics.length>1?'s':'')+']',W-70,y);doc.setFontSize(10);}
+        y+=lines.length*13+2;
+        const ticket=(window._tickets||{})[k];
+        if(ticket){
+          chkY(56);
+          doc.setFillColor(255,244,232); doc.rect(50,y-10,W-90,50,'F');
+          doc.setTextColor(180,70,0); doc.setFontSize(9); doc.setFont(undefined,'bold');
+          T('MAINTENANCE TICKET: '+ticket.num,56,y); y+=12;
+          doc.setFont(undefined,'normal'); doc.setTextColor(60,40,10);
+          T('Equipment: '+ticket.equip+'  Priority: '+ticket.pri+'  Store #'+ticket.store,56,y); y+=11;
+          T('Reported by: '+ticket.rep+'  Date: '+ticket.date,56,y); y+=11;
+          if(ticket.issue){const il=doc.splitTextToSize('Issue: '+clean(ticket.issue),W-120);doc.text(il,56,y);y+=il.length*11;}
+          y+=6;
+        }
+      }
+    }
+  }
+}
+
+chkY(28); y+=8;
+doc.setDrawColor(210,210,210); doc.line(36,y,W-36,y); y+=12;
+doc.setFontSize(9); doc.setTextColor(160,160,160);
+T("Generated "+new Date().toLocaleString()+" - Keith's Superstore F.S. Inspection System",36,y);
+
+const safe=sname?'_'+sname.replace(/[^a-zA-Z0-9]/g,''):'';
+doc.save('KeithsFS_Inspection_Store'+store+safe+'_'+String(date).replace(/-/g,'')+'.pdf');
+```
+
+}catch(err){
+alert(‘PDF generation failed: ‘+err.message+’\n\nMake sure you have an internet connection (needed to load the PDF library).’);
+console.error(err);
+}
+}
+
+window.addEventListener(‘DOMContentLoaded’,()=>{
+document.getElementById(‘insp-date’).valueAsDate=new Date();
+build(); updateFollowUp(); toggle(‘storerooms’);
+const today=new Date().toISOString().split(‘T’)[0];
+const mt=document.getElementById(‘mt_date_icecream_1’);
+if(mt) mt.value=today;
+});
+</script>
+
+</body>
+</html>
