@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -96,9 +95,19 @@ input[type=file] { display: none; }
 .actions { margin: 0 12px 28px; display: flex; flex-direction: column; gap: 10px; }
 .btn-export { width: 100%; padding: 15px; border-radius: 12px; background: #1a2744; color: white; border: none; font-size: 16px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .btn-export:active { opacity: 0.88; }
+.btn-print { width: 100%; padding: 13px; border-radius: 12px; background: #374151; color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.btn-print:active { opacity: 0.88; }
 .btn-sheets { width: 100%; padding: 13px; border-radius: 12px; background: #1a7a3c; color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .btn-sheets:active { opacity: 0.88; }
+.btn-backup { width: 100%; padding: 13px; border-radius: 12px; background: #6d28d9; color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.btn-backup:active { opacity: 0.88; }
 .export-note { font-size: 11px; color: #999; text-align: center; margin-top: -4px; }
+
+.backup-status { font-size: 13px; padding: 10px 12px; border-radius: 8px; display: none; }
+.backup-status.show { display: block; }
+.backup-status.loading { background: #f0f0ec; color: #555; }
+.backup-status.success { background: #e8f5dc; color: #2a6b10; }
+.backup-status.error { background: #fdeaea; color: #b52222; }
 
 /* Sheets Modal */
 .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-end; }
@@ -112,8 +121,40 @@ input[type=file] { display: none; }
 .csv-preview { background: #f5f5f2; border-radius: 8px; padding: 10px; font-size: 11px; font-family: monospace; color: #333; word-break: break-all; max-height: 100px; overflow-y: auto; margin-bottom: 12px; white-space: pre-wrap; border: 1px solid #ddd; }
 .btn-dl { width: 100%; padding: 14px; border-radius: 10px; background: #1a7a3c; color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 8px; }
 .btn-close { width: 100%; padding: 11px; border-radius: 10px; background: transparent; color: #888; border: 1px solid #ddd; font-size: 14px; cursor: pointer; }
-</style>
 
+/* Print styles */
+@media print {
+  body { background: white !important; }
+  .app-header { position: static !important; box-shadow: none !important; }
+  .actions, .modal-bg, input[type=file] { display: none !important; }
+  .progress-wrap { display: none !important; }
+  .sec-body { display: block !important; }
+  .photo-zone { display: block !important; }
+  .add-tile { display: none !important; }
+  .del { display: none !important; }
+  .chevron { display: none !important; }
+  .section { break-inside: avoid; margin-bottom: 8px !important; }
+  .sec-header { padding: 8px 12px !important; }
+  .item-row { padding: 6px 12px !important; }
+  .btn-cam { display: none !important; }
+  .btn-yn, .btn-na {
+    border: none !important;
+    background: transparent !important;
+    height: auto !important;
+    width: auto !important;
+    padding: 2px 4px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+  }
+  .btn-yn.yes-on { color: #2a6b10 !important; }
+  .btn-yn.no-on  { color: #b52222 !important; }
+  .btn-na.na-on  { color: #7a5008 !important; }
+  .maint-zone.open { display: block !important; }
+  .followup-banner.show { display: flex !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+</style>
 </head>
 <body>
 
@@ -165,11 +206,13 @@ input[type=file] { display: none; }
 <div class="actions">
   <button class="btn-export" onclick="exportPDF()">&#128196; Export PDF Report</button>
   <p class="export-note">Photos on NO items are embedded in the PDF</p>
+  <button class="btn-print" onclick="printReport()">&#128438; Print Report</button>
   <button class="btn-sheets" onclick="openSheetsModal()">&#128202; Download CSV for Google Sheets</button>
+  <button class="btn-backup" onclick="backupToSupabase()">&#9729;&#65039; Backup to Supabase</button>
+  <div class="backup-status" id="backup-status"></div>
 </div>
 
 <!-- Sheets Modal -->
-
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeSheetsModal()">
   <div class="modal-panel">
     <h3>&#128202; Log to Google Sheets</h3>
@@ -188,6 +231,9 @@ input[type=file] { display: none; }
 </div>
 
 <script>
+const SUPABASE_URL = 'https://zdbaymktrzsmzimwdeua.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkYmF5bWt0cnpzbXppbXdkZXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDAxNTQsImV4cCI6MjA5MTQxNjE1NH0.-NONMuk3lkeL0HTiJtPBNEU3F33Y4dOIb1Iv7_K2Ykw';
+
 const SECTIONS = [
   { id:'storerooms', title:'Storerooms', icon:'&#127978;', items:[
     'Rotation of food supplies',
@@ -332,334 +378,513 @@ const STORE_NAMES = {
 
 function getStoreName(n){ return STORE_NAMES[String(n).trim()]||''; }
 function updateStoreName(){
-  const n=document.getElementById('store-num').value;
-  const name=getStoreName(n);
+  var n=document.getElementById('store-num').value;
+  var name=getStoreName(n);
   document.getElementById('store-name-display').textContent=name?'>> '+name:'';
 }
 
-const answers={}, photos={};
-SECTIONS.forEach(s=>s.items.forEach((_,i)=>{ const k=s.id+'_'+i; answers[k]=null; photos[k]=[]; }));
+var answers={}, photos={};
+SECTIONS.forEach(function(s){ s.items.forEach(function(_,i){ var k=s.id+'_'+i; answers[k]=null; photos[k]=[]; }); });
 
-// BUILD
+// BUILD — uses string concatenation to avoid template-literal edge cases
 function build(){
-  const wrap=document.getElementById('sections');
-  SECTIONS.forEach(sec=>{
-    const div=document.createElement('div'); div.className='section'; div.id='sec_'+sec.id;
-    let html=`<div class="sec-header" onclick="toggle('${sec.id}')">
-      <div class="sec-left"><span class="sec-icon">${sec.icon}</span><span class="sec-title">${sec.title}</span></div>
-      <div class="sec-right"><span class="sec-badge" id="badge_${sec.id}">0/${sec.items.length}</span><span class="chevron" id="chev_${sec.id}">&#9662;</span></div>
-    </div><div class="sec-body" id="body_${sec.id}">`;
+  var wrap=document.getElementById('sections');
+  SECTIONS.forEach(function(sec){
+    var div=document.createElement('div');
+    div.className='section';
+    div.id='sec_'+sec.id;
 
-    sec.items.forEach((item,i)=>{
-      const k=sec.id+'_'+i, isMaint=sec.maintenanceItem===i;
-      html+=`<div class="c-item">
-        <div class="item-row">
-          <span class="item-text">${item}</span>
-          <div class="item-controls">
-            <button class="btn-yn" id="yes_${k}" onclick="pick('${k}','yes')">YES</button>
-            <button class="btn-yn" id="no_${k}" onclick="pick('${k}','no')">NO</button>
-            <button class="btn-na" id="na_${k}" onclick="pick('${k}','na')">N/A</button>
-            <button class="btn-cam" id="cam_${k}" onclick="togglePhoto('${k}')">&#128247;</button>
-          </div>
-        </div>
-        <div class="photo-zone" id="pz_${k}">
-          <div class="photo-row" id="pr_${k}"><div class="add-tile" onclick="triggerFile('${k}')"><span class="plus">+</span><span>Add photo</span></div></div>
-          <input type="file" id="fi_${k}" accept="image/*" capture="environment" multiple onchange="gotFiles('${k}',this)">
-        </div>
-        ${isMaint?`<div class="maint-zone" id="maint_${k}">
-          <h4>&#128295; Maintenance Ticket Required</h4>
-          <div class="maint-grid">
-            <div><label>Store #</label><input type="text" id="mt_store_${k}" placeholder="107"></div>
-            <div><label>Date</label><input type="date" id="mt_date_${k}"></div>
-            <div><label>Reported By</label><input type="text" id="mt_rep_${k}" placeholder="Your name"></div>
-            <div><label>Priority</label><select id="mt_pri_${k}"><option>Urgent</option><option>High</option><option selected>Normal</option></select></div>
-            <div class="full"><label>Equipment</label><input type="text" id="mt_equip_${k}" value="Ice Cream Machine"></div>
-            <div class="full"><label>Issue Description</label><textarea id="mt_issue_${k}" placeholder="Describe the issue..."></textarea></div>
+    var html=
+      '<div class="sec-header" onclick="toggle(\''+sec.id+'\')">' +
+        '<div class="sec-left"><span class="sec-icon">'+sec.icon+'</span><span class="sec-title">'+sec.title+'</span></div>' +
+        '<div class="sec-right"><span class="sec-badge" id="badge_'+sec.id+'">0/'+sec.items.length+'</span>' +
+        '<span class="chevron" id="chev_'+sec.id+'">&#9662;</span></div>' +
+      '</div>' +
+      '<div class="sec-body" id="body_'+sec.id+'">';
 
-```
-      </div>
-      <button class="btn-maint" onclick="submitMaint('${k}')">Generate Maintenance Ticket</button>
-      <div class="maint-sent" id="ms_${k}"></div>
-    </div>`:''}
-  </div>`;
-});
-html+='</div>'; div.innerHTML=html; wrap.appendChild(div);
-```
+    sec.items.forEach(function(item,i){
+      var k=sec.id+'_'+i;
+      var isMaint=sec.maintenanceItem===i;
+      html+=
+        '<div class="c-item">' +
+          '<div class="item-row">' +
+            '<span class="item-text">'+item+'</span>' +
+            '<div class="item-controls">' +
+              '<button class="btn-yn" id="yes_'+k+'" onclick="pick(\''+k+'\',\'yes\')">YES</button>' +
+              '<button class="btn-yn" id="no_'+k+'" onclick="pick(\''+k+'\',\'no\')">NO</button>' +
+              '<button class="btn-na" id="na_'+k+'" onclick="pick(\''+k+'\',\'na\')">N/A</button>' +
+              '<button class="btn-cam" id="cam_'+k+'" onclick="togglePhoto(\''+k+'\')">&#128247;</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="photo-zone" id="pz_'+k+'">' +
+            '<div class="photo-row" id="pr_'+k+'">' +
+              '<div class="add-tile" onclick="triggerFile(\''+k+'\')"><span class="plus">+</span><span>Add photo</span></div>' +
+            '</div>' +
+            '<input type="file" id="fi_'+k+'" accept="image/*" capture="environment" multiple onchange="gotFiles(\''+k+'\',this)">' +
+          '</div>';
 
-});
-updateProg();
+      if(isMaint){
+        html+=
+          '<div class="maint-zone" id="maint_'+k+'">' +
+            '<h4>&#128295; Maintenance Ticket Required</h4>' +
+            '<div class="maint-grid">' +
+              '<div><label>Store #</label><input type="text" id="mt_store_'+k+'" placeholder="107"></div>' +
+              '<div><label>Date</label><input type="date" id="mt_date_'+k+'"></div>' +
+              '<div><label>Reported By</label><input type="text" id="mt_rep_'+k+'" placeholder="Your name"></div>' +
+              '<div><label>Priority</label><select id="mt_pri_'+k+'"><option>Urgent</option><option>High</option><option selected>Normal</option></select></div>' +
+              '<div class="full"><label>Equipment</label><input type="text" id="mt_equip_'+k+'" value="Ice Cream Machine"></div>' +
+              '<div class="full"><label>Issue Description</label><textarea id="mt_issue_'+k+'" placeholder="Describe the issue..."></textarea></div>' +
+            '</div>' +
+            '<button class="btn-maint" onclick="submitMaint(\''+k+'\')">Generate Maintenance Ticket</button>' +
+            '<div class="maint-sent" id="ms_'+k+'"></div>' +
+          '</div>';
+      }
+
+      html+='</div>';
+    });
+
+    html+='</div>';
+    div.innerHTML=html;
+    wrap.appendChild(div);
+  });
+  updateProg();
 }
 
 function toggle(id){
-document.getElementById(‘body_’+id).classList.toggle(‘open’);
-document.getElementById(‘chev_’+id).classList.toggle(‘open’);
+  document.getElementById('body_'+id).classList.toggle('open');
+  document.getElementById('chev_'+id).classList.toggle('open');
 }
 
 function pick(k,val){
-answers[k]=val;
-[‘yes’,‘no’,‘na’].forEach(v=>{ const el=document.getElementById((v===‘na’?‘na’:v)+’*’+k); if(el) el.className=el.className.replace(/ (yes-on|no-on|na-on)/g,’’); });
-document.getElementById((val===‘na’?‘na’:val)+’*’+k).classList.add(val===‘yes’?‘yes-on’:val===‘no’?‘no-on’:‘na-on’);
-if(val===‘no’) document.getElementById(‘pz_’+k).classList.add(‘open’);
-const mz=document.getElementById(‘maint_’+k); if(mz) mz.classList.toggle(‘open’,val===‘no’);
-updateBadge(k.split(’_’)[0]); updateProg();
+  answers[k]=val;
+  ['yes','no','na'].forEach(function(v){
+    var el=document.getElementById(v+'_'+k);
+    if(el) el.className=el.className.replace(/ (yes-on|no-on|na-on)/g,'');
+  });
+  document.getElementById(val+'_'+k).classList.add(val==='yes'?'yes-on':val==='no'?'no-on':'na-on');
+  if(val==='no') document.getElementById('pz_'+k).classList.add('open');
+  var mz=document.getElementById('maint_'+k); if(mz) mz.classList.toggle('open',val==='no');
+  updateBadge(k.split('_')[0]); updateProg();
 }
 
-function togglePhoto(k){ document.getElementById(‘pz_’+k).classList.toggle(‘open’); }
-function triggerFile(k){ document.getElementById(‘fi_’+k).click(); }
+function togglePhoto(k){ document.getElementById('pz_'+k).classList.toggle('open'); }
+function triggerFile(k){ document.getElementById('fi_'+k).click(); }
+
 function gotFiles(k,inp){
-Array.from(inp.files).forEach(f=>{ const r=new FileReader(); r.onload=e=>{ photos[k].push(e.target.result); renderThumbs(k); refreshCam(k); }; r.readAsDataURL(f); });
-inp.value=’’;
+  Array.from(inp.files).forEach(function(f){
+    var r=new FileReader();
+    r.onload=function(e){ photos[k].push(e.target.result); renderThumbs(k); refreshCam(k); };
+    r.readAsDataURL(f);
+  });
+  inp.value='';
 }
+
 function renderThumbs(k){
-const row=document.getElementById(‘pr_’+k); row.innerHTML=’’;
-photos[k].forEach((src,i)=>{ const d=document.createElement(‘div’); d.className=‘thumb’; d.innerHTML=`<img src="${src}"><button class="del" onclick="delPhoto('${k}',${i})">x</button>`; row.appendChild(d); });
-const a=document.createElement(‘div’); a.className=‘add-tile’; a.onclick=()=>triggerFile(k); a.innerHTML=’<span class="plus">+</span><span>Add photo</span>’; row.appendChild(a);
+  var row=document.getElementById('pr_'+k);
+  row.innerHTML='';
+  photos[k].forEach(function(src,i){
+    var d=document.createElement('div');
+    d.className='thumb';
+    d.innerHTML='<img src="'+src+'"><button class="del" onclick="delPhoto(\''+k+'\','+i+')">x</button>';
+    row.appendChild(d);
+  });
+  var a=document.createElement('div');
+  a.className='add-tile';
+  a.onclick=function(){ triggerFile(k); };
+  a.innerHTML='<span class="plus">+</span><span>Add photo</span>';
+  row.appendChild(a);
 }
+
 function delPhoto(k,i){ photos[k].splice(i,1); renderThumbs(k); refreshCam(k); }
+
 function refreshCam(k){
-const btn=document.getElementById(‘cam_’+k), n=photos[k].length;
-btn.className=‘btn-cam’+(n>0?’ has-pic’:’’);
-btn.innerHTML=n>0?’📷 ‘+n:’📷’;
+  var btn=document.getElementById('cam_'+k), n=photos[k].length;
+  btn.className='btn-cam'+(n>0?' has-pic':'');
+  btn.innerHTML=n>0?'📷 '+n:'📷';
 }
+
 function updateBadge(secId){
-const sec=SECTIONS.find(s=>s.id===secId);
-const ans=sec.items.filter((*,i)=>answers[secId+’*’+i]!==null).length;
-const nos=sec.items.filter((*,i)=>answers[secId+’*’+i]===‘no’).length;
-const badge=document.getElementById(‘badge_’+secId);
-badge.textContent=ans+’/’+sec.items.length;
-badge.className=‘sec-badge’+(nos>0?’ has-fail’:ans===sec.items.length?’ all-pass’:’’);
+  var sec=SECTIONS.find(function(s){ return s.id===secId; });
+  var ans=sec.items.filter(function(_,i){ return answers[secId+'_'+i]!==null; }).length;
+  var nos=sec.items.filter(function(_,i){ return answers[secId+'_'+i]==='no'; }).length;
+  var badge=document.getElementById('badge_'+secId);
+  badge.textContent=ans+'/'+sec.items.length;
+  badge.className='sec-badge'+(nos>0?' has-fail':ans===sec.items.length?' all-pass':'');
 }
+
 function updateProg(){
-const total=Object.keys(answers).length, done=Object.values(answers).filter(v=>v!==null).length;
-document.getElementById(‘prog-text’).textContent=done+’ / ‘+total;
-document.getElementById(‘prog-fill’).style.width=(total?Math.round(done/total*100):0)+’%’;
+  var total=Object.keys(answers).length, done=Object.values(answers).filter(function(v){ return v!==null; }).length;
+  document.getElementById('prog-text').textContent=done+' / '+total;
+  document.getElementById('prog-fill').style.width=(total?Math.round(done/total*100):0)+'%';
 }
+
 function getFollowUp(){
-const d=document.getElementById(‘insp-date’).value; if(!d) return ‘’;
-const dt=new Date(d+‘T12:00:00’); dt.setDate(dt.getDate()+7);
-return dt.toLocaleDateString(‘en-US’,{weekday:‘short’,month:‘short’,day:‘numeric’,year:‘numeric’});
+  var d=document.getElementById('insp-date').value; if(!d) return '';
+  var dt=new Date(d+'T12:00:00'); dt.setDate(dt.getDate()+7);
+  return dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
 }
+
 function updateFollowUp(){
-const fu=getFollowUp(), banner=document.getElementById(‘fu-banner’);
-if(fu){ document.getElementById(‘fu-date’).textContent=fu; banner.classList.add(‘show’); }
-else banner.classList.remove(‘show’);
+  var fu=getFollowUp(), banner=document.getElementById('fu-banner');
+  if(fu){ document.getElementById('fu-date').textContent=fu; banner.classList.add('show'); }
+  else banner.classList.remove('show');
 }
+
 function submitMaint(k){
-const store=document.getElementById(‘mt_store_’+k).value||document.getElementById(‘store-num’).value||’***’;
-const date=document.getElementById(’mt_date*’+k).value||document.getElementById(‘insp-date’).value||’***’;
-const rep=document.getElementById(’mt_rep*’+k).value||document.getElementById(‘dm-name’).value||’***’;
-const pri=document.getElementById(’mt_pri*’+k).value||‘Normal’;
-const equip=document.getElementById(’mt_equip*’+k).value||‘Ice Cream Machine’;
-const issue=document.getElementById(’mt_issue*’+k).value||‘Not working properly.’;
-const num=‘MNT-’+Date.now().toString().slice(-6);
-document.getElementById(‘ms_’+k).innerHTML=‘Ticket ‘+num+’ — ‘+pri+’ priority | ‘+equip+’ | Store #’+store+’ | ‘+date+’<br><small>’+rep+’: “’+issue+’”</small>’;
-document.getElementById(‘ms_’+k).classList.add(‘show’);
-window._tickets=window._tickets||{}; window._tickets[k]={num,store,date,rep,pri,equip,issue};
+  var store=document.getElementById('mt_store_'+k).value||document.getElementById('store-num').value||'***';
+  var date=document.getElementById('mt_date_'+k).value||document.getElementById('insp-date').value||'***';
+  var rep=document.getElementById('mt_rep_'+k).value||document.getElementById('dm-name').value||'***';
+  var pri=document.getElementById('mt_pri_'+k).value||'Normal';
+  var equip=document.getElementById('mt_equip_'+k).value||'Ice Cream Machine';
+  var issue=document.getElementById('mt_issue_'+k).value||'Not working properly.';
+  var num='MNT-'+Date.now().toString().slice(-6);
+  document.getElementById('ms_'+k).innerHTML='Ticket '+num+' — '+pri+' priority | '+equip+' | Store #'+store+' | '+date+'<br><small>'+rep+': "'+issue+'"</small>';
+  document.getElementById('ms_'+k).classList.add('show');
+  window._tickets=window._tickets||{}; window._tickets[k]={num,store,date,rep,pri,equip,issue};
 }
 
 // CSV / SHEETS
 function buildCSV(){
-const store=document.getElementById(‘store-num’).value||’’;
-const sname=getStoreName(store);
-const date=document.getElementById(‘insp-date’).value||’’;
-const dm=document.getElementById(‘dm-name’).value||’’;
-const time=document.getElementById(‘insp-time’).value||’’;
-const notes=(document.getElementById(‘notes’).value||’’).replace(/”/g,’””’);
-const fu=getFollowUp();
-const yes=Object.values(answers).filter(v=>v===‘yes’).length;
-const no=Object.values(answers).filter(v=>v===‘no’).length;
-const na=Object.values(answers).filter(v=>v===‘na’).length;
-const done=Object.values(answers).filter(v=>v!==null).length;
-const total=Object.keys(answers).length;
-const score=done>0?Math.round((yes+na)/done*100):0;
-const noItems=[];
-SECTIONS.forEach(sec=>sec.items.forEach((item,i)=>{ if(answers[sec.id+’*’+i]===‘no’) noItems.push(’[’+sec.title+’] ‘+item); }));
-const noList=noItems.join(’ | ‘).replace(/”/g,’””’);
-const header=‘Store #,Store Name,Inspection Date,Time,Inspector,Score %,YES Count,NO Count,N/A Count,Total Questions,Answered,Follow-up Date,Status,NO Items,Notes’;
-const row=[store,sname,date,time,dm,score+’%’,yes,no,na,total,done,fu,‘Open’,’”’+noList+’”’,’”’+notes+’”’].join(’,’);
-return {header,row};
+  var store=document.getElementById('store-num').value||'';
+  var sname=getStoreName(store);
+  var date=document.getElementById('insp-date').value||'';
+  var dm=document.getElementById('dm-name').value||'';
+  var time=document.getElementById('insp-time').value||'';
+  var notes=(document.getElementById('notes').value||'').replace(/"/g,'""');
+  var fu=getFollowUp();
+  var yes=Object.values(answers).filter(function(v){ return v==='yes'; }).length;
+  var no=Object.values(answers).filter(function(v){ return v==='no'; }).length;
+  var na=Object.values(answers).filter(function(v){ return v==='na'; }).length;
+  var done=Object.values(answers).filter(function(v){ return v!==null; }).length;
+  var total=Object.keys(answers).length;
+  var score=done>0?Math.round((yes+na)/done*100):0;
+  var noItems=[];
+  SECTIONS.forEach(function(sec){ sec.items.forEach(function(item,i){ if(answers[sec.id+'_'+i]==='no') noItems.push('['+sec.title+'] '+item); }); });
+  var noList=noItems.join(' | ').replace(/"/g,'""');
+  var header='Store #,Store Name,Inspection Date,Time,Inspector,Score %,YES Count,NO Count,N/A Count,Total Questions,Answered,Follow-up Date,Status,NO Items,Notes';
+  var row=[store,sname,date,time,dm,score+'%',yes,no,na,total,done,fu,'Open','"'+noList+'"','"'+notes+'"'].join(',');
+  return {header,row};
 }
+
 function openSheetsModal(){
-const {header,row}=buildCSV();
-document.getElementById(‘csv-preview’).textContent=header+’\n’+row;
-document.getElementById(‘modal-bg’).classList.add(‘open’);
+  var csv=buildCSV();
+  document.getElementById('csv-preview').textContent=csv.header+'\n'+csv.row;
+  document.getElementById('modal-bg').classList.add('open');
 }
-function closeSheetsModal(){ document.getElementById(‘modal-bg’).classList.remove(‘open’); }
+function closeSheetsModal(){ document.getElementById('modal-bg').classList.remove('open'); }
+
 function downloadCSV(){
-const store=document.getElementById(‘store-num’).value||‘Store’;
-const date=document.getElementById(‘insp-date’).value||‘NoDate’;
-const {header,row}=buildCSV();
-const blob=new Blob([header+’\n’+row],{type:‘text/csv’});
-const url=URL.createObjectURL(blob);
-const a=document.createElement(‘a’); a.href=url; a.download=’KeithsFS*’+store+’_’+date.replace(/-/g,’’)+’.csv’;
-document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  var store=document.getElementById('store-num').value||'Store';
+  var date=document.getElementById('insp-date').value||'NoDate';
+  var csv=buildCSV();
+  var blob=new Blob([csv.header+'\n'+csv.row],{type:'text/csv'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='KeithsFS_'+store+'_'+date.replace(/-/g,'')+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// PRINT
+function printReport(){
+  SECTIONS.forEach(function(sec){
+    document.getElementById('body_'+sec.id).classList.add('open');
+    sec.items.forEach(function(_,i){
+      var k=sec.id+'_'+i;
+      if(photos[k] && photos[k].length>0){
+        var pz=document.getElementById('pz_'+k);
+        if(pz) pz.classList.add('open');
+      }
+    });
+  });
+  window.print();
+}
+
+// SUPABASE BACKUP
+function dataURLtoBlob(dataURL){
+  var parts=dataURL.split(',');
+  var mime=parts[0].match(/:(.*?);/)[1];
+  var binary=atob(parts[1]);
+  var arr=new Uint8Array(binary.length);
+  for(var i=0;i<binary.length;i++) arr[i]=binary.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+
+async function backupToSupabase(){
+  var statusEl=document.getElementById('backup-status');
+  statusEl.className='backup-status show loading';
+  statusEl.textContent='Saving inspection data...';
+
+  try{
+    var store=document.getElementById('store-num').value||'';
+    var sname=getStoreName(store);
+    var date=document.getElementById('insp-date').value||'';
+    var dm=document.getElementById('dm-name').value||'';
+    var time=document.getElementById('insp-time').value||'';
+    var notes=document.getElementById('notes').value||'';
+    var fu=getFollowUp();
+    var sched=document.getElementById('s-sched').value||'';
+    var kitch=document.getElementById('s-kitchen').value||'';
+    var front=document.getElementById('s-front').value||'';
+    var needed=document.getElementById('s-needed').value||'';
+
+    var yes=Object.values(answers).filter(function(v){ return v==='yes'; }).length;
+    var no=Object.values(answers).filter(function(v){ return v==='no'; }).length;
+    var na=Object.values(answers).filter(function(v){ return v==='na'; }).length;
+    var done=Object.values(answers).filter(function(v){ return v!==null; }).length;
+    var score=done>0?Math.round((yes+na)/done*100):0;
+
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/inspections',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_KEY,
+        'Authorization':'Bearer '+SUPABASE_KEY,
+        'Prefer':'return=representation'
+      },
+      body:JSON.stringify({
+        store_num:store,
+        store_name:sname,
+        inspection_date:date||null,
+        inspection_time:time,
+        inspector:dm,
+        score:score,
+        yes_count:yes,
+        no_count:no,
+        na_count:na,
+        total_questions:Object.keys(answers).length,
+        answers:answers,
+        notes:notes,
+        follow_up_date:fu,
+        staffing:{sched:sched,kitchen:kitch,front:front,needed:needed}
+      })
+    });
+
+    if(!resp.ok){ var errText=await resp.text(); throw new Error('Save failed: '+errText); }
+    var data=await resp.json();
+    var inspectionId=data[0].id;
+
+    // Upload photos to storage
+    var allPhotoEntries=Object.entries(photos).filter(function(e){ return e[1].length>0; });
+    var photoKeys={};
+
+    if(allPhotoEntries.length>0){
+      statusEl.textContent='Uploading '+allPhotoEntries.reduce(function(a,e){ return a+e[1].length; },0)+' photo(s)...';
+      for(var ei=0;ei<allPhotoEntries.length;ei++){
+        var key=allPhotoEntries[ei][0], pics=allPhotoEntries[ei][1];
+        photoKeys[key]=[];
+        for(var pi=0;pi<pics.length;pi++){
+          var blob=dataURLtoBlob(pics[pi]);
+          var ext=blob.type.includes('png')?'png':'jpg';
+          var path=inspectionId+'/'+key+'_'+pi+'.'+ext;
+          var upResp=await fetch(SUPABASE_URL+'/storage/v1/object/inspection-photos/'+path,{
+            method:'POST',
+            headers:{
+              'apikey':SUPABASE_KEY,
+              'Authorization':'Bearer '+SUPABASE_KEY,
+              'Content-Type':blob.type||'image/jpeg'
+            },
+            body:blob
+          });
+          if(upResp.ok) photoKeys[key].push(path);
+        }
+      }
+      // Update record with photo paths
+      await fetch(SUPABASE_URL+'/rest/v1/inspections?id=eq.'+inspectionId,{
+        method:'PATCH',
+        headers:{
+          'Content-Type':'application/json',
+          'apikey':SUPABASE_KEY,
+          'Authorization':'Bearer '+SUPABASE_KEY
+        },
+        body:JSON.stringify({photo_keys:photoKeys})
+      });
+    }
+
+    var totalUploaded=Object.values(photoKeys).reduce(function(a,v){ return a+v.length; },0);
+    statusEl.className='backup-status show success';
+    statusEl.textContent='Saved! ID: '+inspectionId+(totalUploaded>0?' | '+totalUploaded+' photo(s) uploaded':'');
+
+  }catch(err){
+    statusEl.className='backup-status show error';
+    statusEl.textContent='Backup failed: '+err.message;
+    console.error(err);
+  }
 }
 
 // PDF
-function clean(s){ return String(s).replace(/[^\x00-\x7E]/g,’’).trim(); }
+function clean(s){ return String(s).replace(/[^\x00-\x7E]/g,'').trim(); }
 
 function exportPDF(){
-try{
-const store=document.getElementById(‘store-num’).value||’***’;
-const sname=getStoreName(store);
-const slabel=sname?’#’+store+’ - ‘+sname:’#’+store;
-const date=document.getElementById(‘insp-date’).value||’***’;
-const dm=document.getElementById(‘dm-name’).value||’___’;
-const time=document.getElementById(‘insp-time’).value||’’;
-const notes=document.getElementById(‘notes’).value||’’;
-const sched=document.getElementById(‘s-sched’).value||’’;
-const kitch=document.getElementById(‘s-kitchen’).value||’’;
-const front=document.getElementById(‘s-front’).value||’’;
-const needed=document.getElementById(‘s-needed’).value||’’;
-const fu=getFollowUp();
+  try{
+    var store=document.getElementById('store-num').value||'***';
+    var sname=getStoreName(store);
+    var slabel=sname?'#'+store+' - '+sname:'#'+store;
+    var date=document.getElementById('insp-date').value||'***';
+    var dm=document.getElementById('dm-name').value||'___';
+    var time=document.getElementById('insp-time').value||'';
+    var notes=document.getElementById('notes').value||'';
+    var sched=document.getElementById('s-sched').value||'';
+    var kitch=document.getElementById('s-kitchen').value||'';
+    var front=document.getElementById('s-front').value||'';
+    var needed=document.getElementById('s-needed').value||'';
+    var fu=getFollowUp();
 
-```
-const {jsPDF}=window.jspdf;
-const doc=new jsPDF({unit:'pt',format:'letter'});
-const W=doc.internal.pageSize.getWidth();
-let y=0;
-const chkY=n=>{ if(y+n>730){ doc.addPage(); y=44; } };
-const T=(s,x,yy,opts)=>{ const c=clean(s); if(c) doc.text(c,x,yy,opts||undefined); };
+    var jsPDF=window.jspdf.jsPDF;
+    var doc=new jsPDF({unit:'pt',format:'letter'});
+    var W=doc.internal.pageSize.getWidth();
+    var y=0;
+    var chkY=function(n){ if(y+n>730){ doc.addPage(); y=44; } };
+    var T=function(s,x,yy,opts){ var c=clean(s); if(c) doc.text(c,x,yy,opts||undefined); };
 
-// Header
-doc.setFillColor(26,39,68); doc.rect(0,0,W,54,'F');
-doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont(undefined,'bold');
-T("Keith's Superstore - F.S. Inspection Report",36,28);
-doc.setFontSize(10); doc.setFont(undefined,'normal');
-T('Store '+slabel+'  |  Date: '+date+(time?' @ '+time:'')+'  |  Inspector: '+dm,36,46);
+    // Header
+    doc.setFillColor(26,39,68); doc.rect(0,0,W,54,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont(undefined,'bold');
+    T("Keith's Superstore - F.S. Inspection Report",36,28);
+    doc.setFontSize(10); doc.setFont(undefined,'normal');
+    T('Store '+slabel+'  |  Date: '+date+(time?' @ '+time:'')+'  |  Inspector: '+dm,36,46);
 
-doc.setFillColor(255,243,220); doc.rect(0,54,W,24,'F');
-doc.setTextColor(100,60,0); doc.setFontSize(10); doc.setFont(undefined,'bold');
-T('Follow-up deadline: '+(fu||'7 days from inspection date')+'  |  Store has 7 days to correct all NO items',36,70);
+    doc.setFillColor(255,243,220); doc.rect(0,54,W,24,'F');
+    doc.setTextColor(100,60,0); doc.setFontSize(10); doc.setFont(undefined,'bold');
+    T('Follow-up deadline: '+(fu||'7 days from inspection date')+'  |  Store has 7 days to correct all NO items',36,70);
 
-y=92;
+    y=92;
 
-const totalQ=Object.keys(answers).length;
-const yes=Object.values(answers).filter(v=>v==='yes').length;
-const no=Object.values(answers).filter(v=>v==='no').length;
-const na=Object.values(answers).filter(v=>v==='na').length;
-const done=Object.values(answers).filter(v=>v!==null).length;
-const score=done>0?Math.round((yes+na)/done*100):0;
-const totalPic=Object.values(photos).reduce((a,b)=>a+b.length,0);
+    var totalQ=Object.keys(answers).length;
+    var yes=Object.values(answers).filter(function(v){ return v==='yes'; }).length;
+    var no=Object.values(answers).filter(function(v){ return v==='no'; }).length;
+    var na=Object.values(answers).filter(function(v){ return v==='na'; }).length;
+    var done=Object.values(answers).filter(function(v){ return v!==null; }).length;
+    var score=done>0?Math.round((yes+na)/done*100):0;
+    var totalPic=Object.values(photos).reduce(function(a,b){ return a+b.length; },0);
 
-doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
-T('Inspection Summary',36,y); y+=14;
-doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(50,50,50);
-T('Score: '+score+'%   YES: '+yes+'   NO: '+no+'   N/A: '+na+'   Total: '+totalQ+'   Photos: '+totalPic,36,y); y+=24;
+    doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+    T('Inspection Summary',36,y); y+=14;
+    doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(50,50,50);
+    T('Score: '+score+'%   YES: '+yes+'   NO: '+no+'   N/A: '+na+'   Total: '+totalQ+'   Photos: '+totalPic,36,y); y+=24;
 
-for(const sec of SECTIONS){
-  chkY(32);
-  doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
-  doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
-  T(sec.title,36,y);
-  const sd=sec.items.filter((_,i)=>answers[sec.id+'_'+i]!==null).length;
-  doc.setFont(undefined,'normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
-  T(sd+'/'+sec.items.length,W-70,y); y+=9;
+    for(var si=0;si<SECTIONS.length;si++){
+      var sec=SECTIONS[si];
+      chkY(32);
+      doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
+      doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+      T(sec.title,36,y);
+      var sd=sec.items.filter(function(_,i){ return answers[sec.id+'_'+i]!==null; }).length;
+      doc.setFont(undefined,'normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
+      T(sd+'/'+sec.items.length,W-70,y); y+=9;
 
-  for(let i=0;i<sec.items.length;i++){
-    const k=sec.id+'_'+i, v=answers[k], pics=photos[k]||[];
-    const lbl=v==='yes'?'YES':v==='no'?'NO':v==='na'?'N/A':'---';
-    const rgb=v==='yes'?[42,107,16]:v==='no'?[181,34,34]:v==='na'?[130,80,8]:[170,170,170];
-    chkY(16);
-    doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(...rgb); T(lbl,38,y);
-    doc.setFont(undefined,'normal'); doc.setTextColor(35,35,35);
-    const lines=doc.splitTextToSize(clean(sec.items[i]),W-130); doc.text(lines,72,y);
-    if(pics.length){ doc.setTextColor(30,80,180); doc.setFontSize(8); T('['+pics.length+' photo'+(pics.length>1?'s':'')+']',W-72,y); }
-    y+=lines.length*12+2;
-    if(pics.length){
-      const tw=100,th=76,gap=8; let px=72;
-      for(const src of pics){
-        if(px+tw>W-36){px=72;y+=th+gap;}
-        chkY(th+gap+4);
-        try{doc.addImage(src,'JPEG',px,y,tw,th,undefined,'FAST');}catch(e){try{doc.addImage(src,'PNG',px,y,tw,th,undefined,'FAST');}catch(e2){}}
-        px+=tw+gap;
-      }
-      y+=th+gap+6;
-    }
-  }
-  y+=10;
-}
-
-if(sched||kitch||front||needed){
-  chkY(40);
-  doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
-  doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
-  T('Staffing',36,y); y+=10;
-  doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
-  if(sched){T('On Schedule: '+sched,40,y);y+=14;}
-  if(kitch){T('Kitchen: '+kitch,40,y);y+=14;}
-  if(front){T('Front: '+front,40,y);y+=14;}
-  if(needed){T('Needed: '+needed,40,y);y+=14;}
-  y+=6;
-}
-
-if(notes.trim()){
-  chkY(40);
-  doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
-  doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
-  T('Notes',36,y); y+=10;
-  doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
-  doc.splitTextToSize(clean(notes),W-80).forEach(l=>{chkY(14);T(l,40,y);y+=13;});
-  y+=6;
-}
-
-if(no>0){
-  chkY(44);
-  doc.setFillColor(253,230,230); doc.rect(28,y-14,W-56,22,'F');
-  doc.setTextColor(181,34,34); doc.setFontSize(11); doc.setFont(undefined,'bold');
-  T('Action Required - '+no+' item(s) marked NO',36,y); y+=10;
-  doc.setFont(undefined,'normal'); doc.setFontSize(10);
-  T('Store must correct all items below by: '+(fu||'7 days from inspection'),36,y); y+=16;
-  for(const sec of SECTIONS){
-    for(let i=0;i<sec.items.length;i++){
-      const k=sec.id+'_'+i;
-      if(answers[k]==='no'){
+      for(var ii=0;ii<sec.items.length;ii++){
+        var k=sec.id+'_'+ii, v=answers[k], pics=photos[k]||[];
+        var lbl=v==='yes'?'YES':v==='no'?'NO':v==='na'?'N/A':'---';
+        var rgb=v==='yes'?[42,107,16]:v==='no'?[181,34,34]:v==='na'?[130,80,8]:[170,170,170];
         chkY(16);
-        const pics=photos[k]||[];
-        doc.setTextColor(181,34,34); T('-',40,y);
-        doc.setTextColor(50,50,50);
-        const txt='['+sec.title+'] '+clean(sec.items[i]);
-        const lines=doc.splitTextToSize(txt,W-108); doc.text(lines,52,y);
-        if(pics.length){doc.setTextColor(30,80,180);doc.setFontSize(8.5);T('['+pics.length+' photo'+(pics.length>1?'s':'')+']',W-70,y);doc.setFontSize(10);}
-        y+=lines.length*13+2;
-        const ticket=(window._tickets||{})[k];
-        if(ticket){
-          chkY(56);
-          doc.setFillColor(255,244,232); doc.rect(50,y-10,W-90,50,'F');
-          doc.setTextColor(180,70,0); doc.setFontSize(9); doc.setFont(undefined,'bold');
-          T('MAINTENANCE TICKET: '+ticket.num,56,y); y+=12;
-          doc.setFont(undefined,'normal'); doc.setTextColor(60,40,10);
-          T('Equipment: '+ticket.equip+'  Priority: '+ticket.pri+'  Store #'+ticket.store,56,y); y+=11;
-          T('Reported by: '+ticket.rep+'  Date: '+ticket.date,56,y); y+=11;
-          if(ticket.issue){const il=doc.splitTextToSize('Issue: '+clean(ticket.issue),W-120);doc.text(il,56,y);y+=il.length*11;}
-          y+=6;
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(rgb[0],rgb[1],rgb[2]); T(lbl,38,y);
+        doc.setFont(undefined,'normal'); doc.setTextColor(35,35,35);
+        var lines=doc.splitTextToSize(clean(sec.items[ii]),W-130); doc.text(lines,72,y);
+        if(pics.length){ doc.setTextColor(30,80,180); doc.setFontSize(8); T('['+pics.length+' photo'+(pics.length>1?'s':'')+']',W-72,y); }
+        y+=lines.length*12+2;
+        if(pics.length){
+          var tw=100,th=76,gap=8,px=72;
+          for(var pi=0;pi<pics.length;pi++){
+            if(px+tw>W-36){px=72;y+=th+gap;}
+            chkY(th+gap+4);
+            try{ doc.addImage(pics[pi],'AUTO',px,y,tw,th,undefined,'FAST'); }catch(e){}
+            px+=tw+gap;
+          }
+          y+=th+gap+6;
+        }
+      }
+      y+=10;
+    }
+
+    if(sched||kitch||front||needed){
+      chkY(40);
+      doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
+      doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+      T('Staffing',36,y); y+=10;
+      doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
+      if(sched){T('On Schedule: '+sched,40,y);y+=14;}
+      if(kitch){T('Kitchen: '+kitch,40,y);y+=14;}
+      if(front){T('Front: '+front,40,y);y+=14;}
+      if(needed){T('Needed: '+needed,40,y);y+=14;}
+      y+=6;
+    }
+
+    if(notes.trim()){
+      chkY(40);
+      doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
+      doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+      T('Notes',36,y); y+=10;
+      doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
+      var noteLines=doc.splitTextToSize(clean(notes),W-80);
+      noteLines.forEach(function(l){ chkY(14); T(l,40,y); y+=13; });
+      y+=6;
+    }
+
+    if(no>0){
+      chkY(44);
+      doc.setFillColor(253,230,230); doc.rect(28,y-14,W-56,22,'F');
+      doc.setTextColor(181,34,34); doc.setFontSize(11); doc.setFont(undefined,'bold');
+      T('Action Required - '+no+' item(s) marked NO',36,y); y+=10;
+      doc.setFont(undefined,'normal'); doc.setFontSize(10);
+      T('Store must correct all items below by: '+(fu||'7 days from inspection'),36,y); y+=16;
+      for(var si2=0;si2<SECTIONS.length;si2++){
+        var sec2=SECTIONS[si2];
+        for(var ii2=0;ii2<sec2.items.length;ii2++){
+          var k2=sec2.id+'_'+ii2;
+          if(answers[k2]==='no'){
+            chkY(16);
+            var pics2=photos[k2]||[];
+            doc.setTextColor(181,34,34); T('-',40,y);
+            doc.setTextColor(50,50,50);
+            var txt='['+sec2.title+'] '+clean(sec2.items[ii2]);
+            var lines2=doc.splitTextToSize(txt,W-108); doc.text(lines2,52,y);
+            y+=lines2.length*13+2;
+            if(pics2.length){
+              var tw2=80,th2=60,gap2=6,px2=52;
+              for(var pi2=0;pi2<pics2.length;pi2++){
+                if(px2+tw2>W-36){px2=52;y+=th2+gap2;}
+                chkY(th2+gap2+4);
+                try{ doc.addImage(pics2[pi2],'AUTO',px2,y,tw2,th2,undefined,'FAST'); }catch(e3){}
+                px2+=tw2+gap2;
+              }
+              y+=th2+gap2+4;
+            }
+            var ticket=(window._tickets||{})[k2];
+            if(ticket){
+              chkY(56);
+              doc.setFillColor(255,244,232); doc.rect(50,y-10,W-90,50,'F');
+              doc.setTextColor(180,70,0); doc.setFontSize(9); doc.setFont(undefined,'bold');
+              T('MAINTENANCE TICKET: '+ticket.num,56,y); y+=12;
+              doc.setFont(undefined,'normal'); doc.setTextColor(60,40,10);
+              T('Equipment: '+ticket.equip+'  Priority: '+ticket.pri+'  Store #'+ticket.store,56,y); y+=11;
+              T('Reported by: '+ticket.rep+'  Date: '+ticket.date,56,y); y+=11;
+              if(ticket.issue){var il=doc.splitTextToSize('Issue: '+clean(ticket.issue),W-120);doc.text(il,56,y);y+=il.length*11;}
+              y+=6;
+            }
+          }
         }
       }
     }
+
+    chkY(28); y+=8;
+    doc.setDrawColor(210,210,210); doc.line(36,y,W-36,y); y+=12;
+    doc.setFontSize(9); doc.setTextColor(160,160,160);
+    T("Generated "+new Date().toLocaleString()+" - Keith's Superstore F.S. Inspection System",36,y);
+
+    var safe=sname?'_'+sname.replace(/[^a-zA-Z0-9]/g,''):'';
+    doc.save('KeithsFS_Inspection_Store'+store+safe+'_'+String(date).replace(/-/g,'')+'.pdf');
+
+  }catch(err){
+    alert('PDF generation failed: '+err.message+'\n\nMake sure you have an internet connection (needed to load the PDF library).');
+    console.error(err);
   }
 }
 
-chkY(28); y+=8;
-doc.setDrawColor(210,210,210); doc.line(36,y,W-36,y); y+=12;
-doc.setFontSize(9); doc.setTextColor(160,160,160);
-T("Generated "+new Date().toLocaleString()+" - Keith's Superstore F.S. Inspection System",36,y);
-
-const safe=sname?'_'+sname.replace(/[^a-zA-Z0-9]/g,''):'';
-doc.save('KeithsFS_Inspection_Store'+store+safe+'_'+String(date).replace(/-/g,'')+'.pdf');
-```
-
-}catch(err){
-alert(‘PDF generation failed: ‘+err.message+’\n\nMake sure you have an internet connection (needed to load the PDF library).’);
-console.error(err);
-}
-}
-
-window.addEventListener(‘DOMContentLoaded’,()=>{
-document.getElementById(‘insp-date’).valueAsDate=new Date();
-build(); updateFollowUp(); toggle(‘storerooms’);
-const today=new Date().toISOString().split(‘T’)[0];
-const mt=document.getElementById(‘mt_date_icecream_1’);
-if(mt) mt.value=today;
+window.addEventListener('DOMContentLoaded',function(){
+  document.getElementById('insp-date').valueAsDate=new Date();
+  build(); updateFollowUp(); toggle('storerooms');
+  var today=new Date().toISOString().split('T')[0];
+  var mt=document.getElementById('mt_date_icecream_1');
+  if(mt) mt.value=today;
 });
 </script>
 
