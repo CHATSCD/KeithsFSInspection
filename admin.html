@@ -301,6 +301,7 @@ function renderTable(rows){
     '<th>Y / N / N/A</th>' +
     '<th onclick="setSort(\'follow_up_date\')">Follow-up ' + sortArrow('follow_up_date') + '</th>' +
     '<th>Status</th>' +
+    '<th>Report</th>' +
     '</tr></thead><tbody>';
 
   rows.forEach(function(r, idx){
@@ -314,6 +315,7 @@ function renderTable(rows){
     var counts = (r.yes_count||0) + ' / ' + (r.no_count||0) + ' / ' + (r.na_count||0);
     var statusPill = makeStatus(r, today);
     var rowId = 'row_' + idx;
+    var reportLink = r.id ? '<a href="report.html?id=' + r.id + '" target="_blank" onclick="event.stopPropagation()" style="background:#1452b8;color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;">&#128279; Open</a>' : '—';
 
     html += '<tr class="data-row" onclick="toggleDetail(\'' + rowId + '\')">' +
       '<td><strong>' + esc(storeLabel) + '</strong></td>' +
@@ -323,6 +325,7 @@ function renderTable(rows){
       '<td style="color:#666">' + counts + '</td>' +
       '<td style="font-size:12px">' + (r.follow_up_date ? fmtDate(r.follow_up_date) : '—') + '</td>' +
       '<td>' + statusPill + '</td>' +
+      '<td>' + reportLink + '</td>' +
       '</tr>' +
       '<tr class="detail-row" id="' + rowId + '"><td colspan="7"><div class="detail-inner" id="di_' + rowId + '">' + buildDetail(r) + '</div></td></tr>';
   });
