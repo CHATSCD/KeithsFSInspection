@@ -51,7 +51,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .btn-csv:hover { opacity: 0.88; }
 
 /* Table */
-.table-wrap { margin: 0 16px 24px; background: white; border-radius: 12px; border: 1px solid #e0e0dc; overflow: hidden; }
+.table-wrap { margin: 0 16px 24px; background: white; border-radius: 12px; border: 1px solid #e0e0dc; overflow-x: auto; }
 .loading-msg, .empty-msg { padding: 40px; text-align: center; color: #aaa; font-size: 14px; }
 .error-msg { padding: 20px 24px; color: #b52222; font-size: 13px; background: #fdeaea; }
 
@@ -327,7 +327,7 @@ function renderTable(rows){
       '<td>' + statusPill + '</td>' +
       '<td>' + reportLink + '</td>' +
       '</tr>' +
-      '<tr class="detail-row" id="' + rowId + '"><td colspan="7"><div class="detail-inner" id="di_' + rowId + '">' + buildDetail(r) + '</div></td></tr>';
+      '<tr class="detail-row" id="' + rowId + '"><td colspan="8"><div class="detail-inner" id="di_' + rowId + '">' + buildDetail(r) + '</div></td></tr>';
   });
 
   html += '</tbody></table>';
