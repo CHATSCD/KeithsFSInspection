@@ -115,9 +115,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <img id="lb-img" src="" alt="">
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const SUPABASE_URL = 'https://zdbaymktrzsmzimwdeua.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkYmF5bWt0cnpzbXppbXdkZXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDAxNTQsImV4cCI6MjA5MTQxNjE1NH0.-NONMuk3lkeL0HTiJtPBNEU3F33Y4dOIb1Iv7_K2Ykw';
+
+var signedURLMap = {}; // path -> full signed URL
+var inspectionData = null;
 
 const SECTIONS = [
   { id:'storerooms', title:'Storerooms', icon:'&#127978;', items:['Rotation of food supplies','All items covered, labeled, dated','Items stored on racks 6 inches from floor','Cleaning supplies stored in separate area','Shelves clean and free of dust','Walls, floors, ceilings, vents and doors clean','No signs of rodent/insect infestation'] },
@@ -136,9 +140,7 @@ const SECTIONS = [
   { id:'gelato', title:'Gelato Case', icon:'&#127848;', items:['Clean','Stocked','No craters','Fresh','Log up to date'] }
 ];
 
-function photoURL(path){
-  return SUPABASE_URL + '/storage/v1/object/public/inspection-photos/' + encodeURIComponent(path);
-}
+function photoSrc(path){ return signedURLMap[path] || ''; }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -147,13 +149,33 @@ function fmtDate(d){
   var p=d.split('-'); return p.length===3 ? p[1]+'/'+p[2]+'/'+p[0] : d;
 }
 
-function openLightbox(src){
+function openLightbox(path){
+  var src=signedURLMap[path]||'';
+  if(!src) return;
   document.getElementById('lb-img').src=src;
   document.getElementById('lightbox').classList.add('open');
 }
 function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
 
 function scoreClass(s){ return s>=80?'hi':s<60?'lo':''; }
+
+async function getSignedURLs(photoKeys){
+  var allPaths=[];
+  Object.values(photoKeys).forEach(function(paths){ paths.forEach(function(p){ allPaths.push(p); }); });
+  if(!allPaths.length) return;
+  try{
+    var resp=await fetch(SUPABASE_URL+'/storage/v1/object/sign/inspection-photos',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+      body:JSON.stringify({expiresIn:86400, paths:allPaths})
+    });
+    if(!resp.ok) return;
+    var results=await resp.json();
+    results.forEach(function(item){
+      if(item.signedURL) signedURLMap[item.path]=SUPABASE_URL+item.signedURL;
+    });
+  }catch(e){ console.warn('Signed URL fetch failed',e); }
+}
 
 function render(r){
   var answers   = r.answers   || {};
@@ -164,7 +186,7 @@ function render(r){
   var yes=r.yes_count||0, no=r.no_count||0, na=r.na_count||0, score=r.score||0;
   var fu = r.follow_up_date;
 
-  document.title = "Inspection Report – Store "+storeLabel+" – "+fmtDate(r.inspection_date);
+  document.title = 'Inspection Report – Store '+storeLabel+' – '+fmtDate(r.inspection_date);
 
   var noItems=[];
   SECTIONS.forEach(function(sec){
@@ -175,6 +197,11 @@ function render(r){
   });
 
   var html='<div class="report-wrap">';
+
+  // Download PDF button
+  html+='<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">' +
+    '<button onclick="exportPDF()" style="padding:10px 18px;border-radius:10px;background:#1a2744;color:white;border:none;font-size:14px;font-weight:600;cursor:pointer;">&#128196; Download PDF</button>' +
+  '</div>';
 
   // Header
   html+='<div class="rpt-header">' +
@@ -206,13 +233,11 @@ function render(r){
     '</div>';
     noItems.forEach(function(ni){
       var pics=(photoKeys[ni.k]||[]);
-      html+='<div class="no-item">' +
-        '<div class="item-row"><span class="item-lbl lbl-no">NO</span><span class="item-text"><strong>['+esc(ni.sec)+']</strong> '+esc(ni.item)+'</span></div>';
+      html+='<div class="no-item"><div class="item-row"><span class="item-lbl lbl-no">NO</span><span class="item-text"><strong>['+esc(ni.sec)+']</strong> '+esc(ni.item)+'</span></div>';
       if(pics.length){
         html+='<div class="photo-strip">';
         pics.forEach(function(path){
-          var url=photoURL(path);
-          html+='<img src="'+url+'" loading="lazy" onclick="openLightbox(\''+url+'\')" alt="photo">';
+          html+='<img src="'+esc(photoSrc(path))+'" loading="lazy" onclick="openLightbox(\''+esc(path)+'\')" alt="photo">';
         });
         html+='</div>';
       }
@@ -238,13 +263,11 @@ function render(r){
       var lbl=v==='yes'?'YES':v==='no'?'NO':v==='na'?'N/A':'—';
       var cls=v==='yes'?'lbl-yes':v==='no'?'lbl-no':v==='na'?'lbl-na':'lbl-nil';
       var pics=(photoKeys[k]||[]);
-      html+='<div class="c-item">' +
-        '<div class="item-row"><span class="item-lbl '+cls+'">'+lbl+'</span><span class="item-text">'+esc(item)+'</span></div>';
+      html+='<div class="c-item"><div class="item-row"><span class="item-lbl '+cls+'">'+lbl+'</span><span class="item-text">'+esc(item)+'</span></div>';
       if(pics.length){
         html+='<div class="photo-strip">';
         pics.forEach(function(path){
-          var url=photoURL(path);
-          html+='<img src="'+url+'" loading="lazy" onclick="openLightbox(\''+url+'\')" alt="photo">';
+          html+='<img src="'+esc(photoSrc(path))+'" loading="lazy" onclick="openLightbox(\''+esc(path)+'\')" alt="photo">';
         });
         html+='</div>';
       }
@@ -274,6 +297,161 @@ function render(r){
   document.getElementById('content').innerHTML=html;
 }
 
+// Fetch image as data URL for PDF embedding
+async function imgToDataURL(url){
+  try{
+    var resp=await fetch(url);
+    if(!resp.ok) return null;
+    var blob=await resp.blob();
+    return new Promise(function(resolve){
+      var fr=new FileReader();
+      fr.onload=function(e){ resolve(e.target.result); };
+      fr.onerror=function(){ resolve(null); };
+      fr.readAsDataURL(blob);
+    });
+  }catch(e){ return null; }
+}
+
+async function exportPDF(){
+  var r=inspectionData;
+  if(!r){ alert('No report loaded.'); return; }
+
+  var btn=document.querySelector('button[onclick="exportPDF()"]');
+  if(btn){ btn.textContent='Building PDF…'; btn.disabled=true; }
+
+  try{
+    var answers=r.answers||{}, photoKeys=r.photo_keys||{}, staffing=r.staffing||{};
+    var sname=r.store_name||'', store=r.store_num||'***';
+    var slabel=sname?'#'+store+' - '+sname:'#'+store;
+    var date=r.inspection_date||'***', dm=r.inspector||'___', time=r.inspection_time||'';
+    var fu=r.follow_up_date?fmtDate(r.follow_up_date):'7 days from inspection';
+    var yes=r.yes_count||0, no=r.no_count||0, na=r.na_count||0, score=r.score||0;
+
+    var jsPDF=window.jspdf.jsPDF;
+    var doc=new jsPDF({unit:'pt',format:'letter'});
+    var W=doc.internal.pageSize.getWidth();
+    var y=0;
+    var chkY=function(n){ if(y+n>730){ doc.addPage(); y=44; } };
+    var T=function(s,x,yy,opts){ var c=String(s||'').replace(/[^\x00-\x7E]/g,'').trim(); if(c) doc.text(c,x,yy,opts||undefined); };
+
+    // Header
+    doc.setFillColor(26,39,68); doc.rect(0,0,W,54,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont(undefined,'bold');
+    T("Keith's Superstore - F.&B. Inspection Report",36,28);
+    doc.setFontSize(10); doc.setFont(undefined,'normal');
+    T('Store '+slabel+'  |  Date: '+fmtDate(date)+(time?' @ '+time:'')+'  |  Inspector: '+dm,36,46);
+
+    doc.setFillColor(255,243,220); doc.rect(0,54,W,24,'F');
+    doc.setTextColor(100,60,0); doc.setFontSize(10); doc.setFont(undefined,'bold');
+    T('Follow-up deadline: '+fu+'  |  Store has 7 days to correct all NO items',36,70);
+
+    y=92;
+    doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+    T('Inspection Summary',36,y); y+=14;
+    doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(50,50,50);
+    T('Score: '+score+'%   YES: '+yes+'   NO: '+no+'   N/A: '+na+'   Total: '+Object.keys(answers).length,36,y); y+=24;
+
+    for(var si=0;si<SECTIONS.length;si++){
+      var sec=SECTIONS[si];
+      chkY(32);
+      doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
+      doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+      T(sec.title,36,y);
+      var sd=sec.items.filter(function(_,i){ return answers[sec.id+'_'+i]!=null; }).length;
+      doc.setFont(undefined,'normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
+      T(sd+'/'+sec.items.length,W-70,y); y+=9;
+
+      for(var ii=0;ii<sec.items.length;ii++){
+        var k=sec.id+'_'+ii, v=answers[k], pics=photoKeys[k]||[];
+        var lbl=v==='yes'?'YES':v==='no'?'NO':v==='na'?'N/A':'---';
+        var rgb=v==='yes'?[42,107,16]:v==='no'?[181,34,34]:v==='na'?[130,80,8]:[170,170,170];
+        chkY(16);
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(rgb[0],rgb[1],rgb[2]); T(lbl,38,y);
+        doc.setFont(undefined,'normal'); doc.setTextColor(35,35,35);
+        var lines=doc.splitTextToSize(String(sec.items[ii]).replace(/[^\x00-\x7E]/g,'').trim(),W-130);
+        doc.text(lines,72,y);
+        y+=lines.length*12+2;
+        if(pics.length){
+          var tw=100,th=76,gap=8,px=72;
+          for(var pi=0;pi<pics.length;pi++){
+            var signedSrc=signedURLMap[pics[pi]];
+            if(!signedSrc) continue;
+            var dataURL=await imgToDataURL(signedSrc);
+            if(!dataURL) continue;
+            if(px+tw>W-36){px=72;y+=th+gap;}
+            chkY(th+gap+4);
+            try{ doc.addImage(dataURL,'AUTO',px,y,tw,th,undefined,'FAST'); }catch(e){}
+            px+=tw+gap;
+          }
+          if(px>72) y+=th+gap+6;
+        }
+      }
+      y+=10;
+    }
+
+    if(r.notes&&r.notes.trim()){
+      chkY(40);
+      doc.setFillColor(232,237,248); doc.rect(28,y-14,W-56,22,'F');
+      doc.setTextColor(26,39,68); doc.setFontSize(11); doc.setFont(undefined,'bold');
+      T('Notes',36,y); y+=10;
+      doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
+      var noteLines=doc.splitTextToSize(String(r.notes).replace(/[^\x00-\x7E]/g,'').trim(),W-80);
+      noteLines.forEach(function(l){ chkY(14); T(l,40,y); y+=13; });
+    }
+
+    if(no>0){
+      chkY(44);
+      doc.setFillColor(253,230,230); doc.rect(28,y-14,W-56,22,'F');
+      doc.setTextColor(181,34,34); doc.setFontSize(11); doc.setFont(undefined,'bold');
+      T('Action Required - '+no+' item(s) marked NO',36,y); y+=10;
+      doc.setFont(undefined,'normal'); doc.setFontSize(10);
+      T('Store must correct all items by: '+fu,36,y); y+=16;
+      for(var si2=0;si2<SECTIONS.length;si2++){
+        var sec2=SECTIONS[si2];
+        for(var ii2=0;ii2<sec2.items.length;ii2++){
+          var k2=sec2.id+'_'+ii2;
+          if(answers[k2]==='no'){
+            chkY(16);
+            var pics2=photoKeys[k2]||[];
+            doc.setTextColor(181,34,34); T('-',40,y);
+            doc.setTextColor(50,50,50);
+            var txt='['+sec2.title+'] '+String(sec2.items[ii2]).replace(/[^\x00-\x7E]/g,'').trim();
+            var lines2=doc.splitTextToSize(txt,W-108); doc.text(lines2,52,y);
+            y+=lines2.length*13+2;
+            if(pics2.length){
+              var tw2=80,th2=60,gap2=6,px2=52;
+              for(var pi2=0;pi2<pics2.length;pi2++){
+                var s2=signedURLMap[pics2[pi2]];
+                if(!s2) continue;
+                var d2=await imgToDataURL(s2);
+                if(!d2) continue;
+                if(px2+tw2>W-36){px2=52;y+=th2+gap2;}
+                chkY(th2+gap2+4);
+                try{ doc.addImage(d2,'AUTO',px2,y,tw2,th2,undefined,'FAST'); }catch(e3){}
+                px2+=tw2+gap2;
+              }
+              if(px2>52) y+=th2+gap2+4;
+            }
+          }
+        }
+      }
+    }
+
+    chkY(28); y+=8;
+    doc.setDrawColor(210,210,210); doc.line(36,y,W-36,y); y+=12;
+    doc.setFontSize(9); doc.setTextColor(160,160,160);
+    T('Generated '+new Date().toLocaleString()+" - Keith's Superstore F.&B. Inspection System",36,y);
+
+    var safe=sname?'_'+sname.replace(/[^a-zA-Z0-9]/g,''):'';
+    doc.save('KeithsFB_Report_Store'+store+safe+'_'+String(date).replace(/-/g,'')+'.pdf');
+  }catch(err){
+    alert('PDF failed: '+err.message);
+    console.error(err);
+  }finally{
+    if(btn){ btn.textContent='&#128196; Download PDF'; btn.disabled=false; }
+  }
+}
+
 function showError(msg){
   document.getElementById('content').innerHTML='<div class="state-card">' +
     '<div class="icon">&#9888;&#65039;</div><h2>Report not found</h2><p>'+esc(msg)+'</p></div>';
@@ -291,7 +469,9 @@ async function load(){
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     var rows=await resp.json();
     if(!rows.length) throw new Error('Inspection ID not found.');
-    render(rows[0]);
+    inspectionData=rows[0];
+    await getSignedURLs(inspectionData.photo_keys||{});
+    render(inspectionData);
   }catch(err){
     showError(err.message);
   }
