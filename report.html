@@ -57,7 +57,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 .photo-strip { padding: 0 16px 12px; display: flex; flex-wrap: wrap; gap: 8px; }
 .photo-strip img { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; }
+.photo-strip { position: relative; }
 .photo-strip img:active { opacity: 0.8; }
+.photo-thumb { position: relative; display: inline-block; }
+.photo-thumb img { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; display: block; }
+.photo-thumb .dl-btn { position: absolute; bottom: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.6); border: none; color: white; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-decoration: none; line-height: 1; }
+.photo-thumb .dl-btn:hover { background: rgba(0,0,0,0.85); }
 
 .no-section { background: white; border-radius: 12px; border: 1.5px solid #e05050; margin-bottom: 10px; overflow: hidden; }
 .no-section .sec-head { background: #fdeaea; }
@@ -110,12 +115,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <span class="lightbox-close">&times;</span>
-  <img id="lb-img" src="" alt="">
+<div class="lightbox" id="lightbox" onclick="if(event.target===this||event.target.id==='lightbox')closeLightbox()">
+  <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+  <img id="lb-img" src="" alt="" style="cursor:default">
+  <a id="lb-dl" href="" download style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.4);border-radius:10px;padding:10px 22px;font-size:14px;font-weight:600;text-decoration:none;backdrop-filter:blur(4px);">&#11015; Download Photo</a>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 const SUPABASE_URL = 'https://zdbaymktrzsmzimwdeua.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkYmF5bWt0cnpzbXppbXdkZXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDAxNTQsImV4cCI6MjA5MTQxNjE1NH0.-NONMuk3lkeL0HTiJtPBNEU3F33Y4dOIb1Iv7_K2Ykw';
@@ -152,10 +159,62 @@ function fmtDate(d){
 function openLightbox(path){
   var src=signedURLMap[path]||'';
   if(!src) return;
+  var fname=path.split('/').pop()||'photo.jpg';
   document.getElementById('lb-img').src=src;
+  var dlLink=document.getElementById('lb-dl');
+  dlLink.href=src; dlLink.download=fname;
   document.getElementById('lightbox').classList.add('open');
 }
 function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+
+async function downloadPhoto(path){
+  var src=signedURLMap[path]; if(!src) return;
+  var fname=path.split('/').pop()||'photo.jpg';
+  try{
+    var resp=await fetch(src);
+    var blob=await resp.blob();
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+  }catch(e){ window.open(src,'_blank'); }
+}
+
+async function downloadAllPhotos(){
+  var r=inspectionData; if(!r) return;
+  var photoKeys=r.photo_keys||{};
+  var allPaths=[];
+  Object.values(photoKeys).forEach(function(paths){ paths.forEach(function(p){ allPaths.push(p); }); });
+  if(!allPaths.length){ alert('No photos in this inspection.'); return; }
+
+  var btn=document.getElementById('dl-all-btn');
+  btn.textContent='Zipping… 0/'+allPaths.length; btn.disabled=true;
+
+  try{
+    var zip=new JSZip();
+    var folder=zip.folder('inspection_photos');
+    for(var i=0;i<allPaths.length;i++){
+      var path=allPaths[i];
+      var src=signedURLMap[path]; if(!src) continue;
+      btn.textContent='Zipping… '+(i+1)+'/'+allPaths.length;
+      try{
+        var resp=await fetch(src);
+        if(!resp.ok) continue;
+        var blob=await resp.blob();
+        folder.file(path.split('/').pop()||('photo_'+i+'.jpg'), blob);
+      }catch(e){}
+    }
+    var storeNum=r.store_num||'store';
+    var date=(r.inspection_date||'').replace(/-/g,'')||'nodate';
+    var zipBlob=await zip.generateAsync({type:'blob'});
+    var url=URL.createObjectURL(zipBlob);
+    var a=document.createElement('a'); a.href=url; a.download='KeithsFB_Photos_'+storeNum+'_'+date+'.zip';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); },2000);
+  }finally{
+    btn.textContent='&#128247; Download All Photos (ZIP)'; btn.disabled=false;
+  }
+}
 
 function scoreClass(s){ return s>=80?'hi':s<60?'lo':''; }
 
@@ -198,10 +257,14 @@ function render(r){
 
   var html='<div class="report-wrap">';
 
-  // Download PDF button
-  html+='<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">' +
-    '<button onclick="exportPDF()" style="padding:10px 18px;border-radius:10px;background:#1a2744;color:white;border:none;font-size:14px;font-weight:600;cursor:pointer;">&#128196; Download PDF</button>' +
-  '</div>';
+  // Action buttons
+  var totalPics=Object.values(photoKeys).reduce(function(a,v){ return a+v.length; },0);
+  html+='<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-bottom:10px;">';
+  if(totalPics>0){
+    html+='<button id="dl-all-btn" onclick="downloadAllPhotos()" style="padding:10px 16px;border-radius:10px;background:#1452b8;color:white;border:none;font-size:14px;font-weight:600;cursor:pointer;">&#128247; Download All Photos (ZIP)</button>';
+  }
+  html+='<button onclick="exportPDF()" style="padding:10px 16px;border-radius:10px;background:#1a2744;color:white;border:none;font-size:14px;font-weight:600;cursor:pointer;">&#128196; Download PDF</button>';
+  html+='</div>';
 
   // Header
   html+='<div class="rpt-header">' +
@@ -237,7 +300,10 @@ function render(r){
       if(pics.length){
         html+='<div class="photo-strip">';
         pics.forEach(function(path){
-          html+='<img src="'+esc(photoSrc(path))+'" loading="lazy" onclick="openLightbox(\''+esc(path)+'\')" alt="photo">';
+          html+='<div class="photo-thumb">' +
+            '<img src="'+esc(photoSrc(path))+'" loading="lazy" onclick="openLightbox(\''+esc(path)+'\')" alt="photo">' +
+            '<button class="dl-btn" onclick="event.stopPropagation();downloadPhoto(\''+esc(path)+'\')" title="Download">&#11015;</button>' +
+          '</div>';
         });
         html+='</div>';
       }
@@ -267,7 +333,10 @@ function render(r){
       if(pics.length){
         html+='<div class="photo-strip">';
         pics.forEach(function(path){
-          html+='<img src="'+esc(photoSrc(path))+'" loading="lazy" onclick="openLightbox(\''+esc(path)+'\')" alt="photo">';
+          html+='<div class="photo-thumb">' +
+            '<img src="'+esc(photoSrc(path))+'" loading="lazy" onclick="openLightbox(\''+esc(path)+'\')" alt="photo">' +
+            '<button class="dl-btn" onclick="event.stopPropagation();downloadPhoto(\''+esc(path)+'\')" title="Download">&#11015;</button>' +
+          '</div>';
         });
         html+='</div>';
       }
