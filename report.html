@@ -168,16 +168,18 @@ function openLightbox(path){
 function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
 
 async function downloadPhoto(path){
-  var src=signedURLMap[path]; if(!src) return;
   var fname=path.split('/').pop()||'photo.jpg';
   try{
-    var resp=await fetch(src);
+    var resp=await fetch(SUPABASE_URL+'/storage/v1/object/inspection-photos/'+path,{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
     var blob=await resp.blob();
     var url=URL.createObjectURL(blob);
     var a=document.createElement('a'); a.href=url; a.download=fname;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(url); },1000);
-  }catch(e){ window.open(src,'_blank'); }
+  }catch(e){ alert('Download failed: '+e.message); }
 }
 
 async function downloadAllPhotos(){
@@ -193,17 +195,22 @@ async function downloadAllPhotos(){
   try{
     var zip=new JSZip();
     var folder=zip.folder('inspection_photos');
+    var added=0;
     for(var i=0;i<allPaths.length;i++){
       var path=allPaths[i];
-      var src=signedURLMap[path]; if(!src) continue;
       btn.textContent='Zipping… '+(i+1)+'/'+allPaths.length;
       try{
-        var resp=await fetch(src);
+        // Fetch directly from Supabase storage with auth headers
+        var resp=await fetch(SUPABASE_URL+'/storage/v1/object/inspection-photos/'+path,{
+          headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+        });
         if(!resp.ok) continue;
         var blob=await resp.blob();
         folder.file(path.split('/').pop()||('photo_'+i+'.jpg'), blob);
-      }catch(e){}
+        added++;
+      }catch(e){ console.warn('Photo fetch failed:',path,e); }
     }
+    if(added===0){ alert('Could not fetch any photos. Check your connection and try again.'); return; }
     var storeNum=r.store_num||'store';
     var date=(r.inspection_date||'').replace(/-/g,'')||'nodate';
     var zipBlob=await zip.generateAsync({type:'blob'});
