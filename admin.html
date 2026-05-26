@@ -98,6 +98,45 @@ tr.detail-row td { padding: 0; background: #f8f8f5; }
 .no-items-list h4 { font-size: 12px; color: #b52222; font-weight: 700; margin-bottom: 6px; }
 .no-items-list li { font-size: 12px; color: #722; margin-left: 14px; line-height: 1.6; }
 .notes-box { margin-top: 10px; background: #f5f5f2; border-radius: 8px; padding: 10px 13px; font-size: 13px; color: #444; white-space: pre-wrap; }
+
+/* Tabs */
+.tab-bar { display:flex; background:#1a2744; padding:0 16px; }
+.tab-btn { padding:10px 18px; border:none; background:transparent; color:rgba(255,255,255,0.6); font-size:14px; font-weight:600; cursor:pointer; border-bottom:3px solid transparent; }
+.tab-btn.active { color:white; border-bottom-color:#c8a84b; }
+
+/* Stores pane */
+.stores-toolbar { display:flex; justify-content:flex-end; margin-bottom:12px; }
+.btn-add-store { padding:9px 16px; border-radius:9px; background:#1a2744; color:white; border:none; font-size:13px; font-weight:600; cursor:pointer; }
+.btn-add-store:hover { opacity:0.88; }
+.dm-section-header { padding:6px 14px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:white; border-radius:6px; margin-bottom:4px; }
+.store-card { background:white; border-radius:10px; border:1px solid #e0e0dc; margin-bottom:6px; overflow:hidden; }
+.store-card-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-left:4px solid transparent; }
+.store-card-num { font-size:15px; font-weight:700; color:#1a2744; min-width:60px; flex-shrink:0; }
+.store-card-dm { font-size:12px; padding:2px 8px; border-radius:20px; color:white; font-weight:600; white-space:nowrap; flex-shrink:0; }
+.store-card-addr { font-size:12px; color:#888; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.store-card-actions { display:flex; gap:6px; flex-shrink:0; }
+.btn-edit-store { padding:5px 11px; border-radius:7px; background:#f0f0ec; color:#1a2744; border:none; font-size:12px; font-weight:600; cursor:pointer; }
+.btn-del-store { padding:5px 10px; border-radius:7px; background:#fdeaea; color:#b52222; border:none; font-size:12px; font-weight:600; cursor:pointer; }
+.btn-geocode-store { padding:5px 11px; border-radius:7px; background:#fff3de; color:#7a5008; border:none; font-size:12px; font-weight:600; cursor:pointer; }
+
+/* Store Modal */
+.store-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:300; align-items:flex-end; justify-content:center; }
+.store-modal-bg.open { display:flex; }
+.store-modal-panel { background:white; border-radius:20px 20px 0 0; padding:20px 20px 36px; width:100%; max-width:600px; max-height:90vh; overflow-y:auto; }
+.store-modal-panel h3 { font-size:16px; font-weight:700; color:#1a2744; margin-bottom:14px; }
+.form-row { margin-bottom:12px; }
+.form-row label { font-size:11px; color:#666; text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:4px; }
+.form-row input, .form-row select { width:100%; border:1px solid #d0d0cc; border-radius:8px; padding:10px 12px; font-size:15px; background:#f8f8f5; color:#1a1a1a; font-family:inherit; }
+.form-row input:focus, .form-row select:focus { outline:none; border-color:#1a2744; }
+.form-btns { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+.btn-save-geo { padding:13px; border-radius:10px; background:#1a2744; color:white; border:none; font-size:14px; font-weight:600; cursor:pointer; }
+.btn-save-no-geo { padding:12px; border-radius:10px; background:#374151; color:white; border:none; font-size:14px; font-weight:600; cursor:pointer; }
+.btn-cancel-store { padding:11px; border-radius:10px; background:transparent; color:#888; border:1px solid #ddd; font-size:14px; cursor:pointer; }
+.store-form-status { font-size:13px; padding:9px 12px; border-radius:8px; margin-top:8px; display:none; }
+.store-form-status.show { display:block; }
+.store-form-status.loading { background:#f0f0ec; color:#555; }
+.store-form-status.success { background:#e8f5dc; color:#2a6b10; }
+.store-form-status.error { background:#fdeaea; color:#b52222; }
 </style>
 </head>
 <body>
