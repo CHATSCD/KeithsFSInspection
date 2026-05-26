@@ -434,7 +434,7 @@ function build(){
           '<div class="maint-zone" id="maint_'+k+'">' +
             '<h4>&#128295; Maintenance Ticket Required</h4>' +
             '<div class="maint-grid">' +
-              '<div><label>Store #</label><input type="text" id="mt_store_'+k+'" placeholder="107"></div>' +
+              '<div><label>Store #</label><input type="text" id="mt_store_'+k+'" placeholder="Store #" value="'+(document.getElementById('store-num').value||'')+'"></div>' +
               '<div><label>Date</label><input type="date" id="mt_date_'+k+'"></div>' +
               '<div><label>Reported By</label><input type="text" id="mt_rep_'+k+'" placeholder="Your name"></div>' +
               '<div><label>Priority</label><select id="mt_pri_'+k+'"><option>Urgent</option><option>High</option><option selected>Normal</option></select></div>' +
