@@ -219,6 +219,7 @@ input[type=file] { display: none; }
   <button class="btn-sheets" onclick="openSheetsModal()">&#128202; Download CSV for Google Sheets</button>
   <button class="btn-backup" onclick="backupToSupabase()">&#9729;&#65039; Backup to Supabase</button>
   <div class="backup-status" id="backup-status"></div>
+  <div id="report-link-wrap" style="display:none;margin-top:10px;"></div>
 </div>
 
 <!-- Sheets Modal -->
@@ -382,7 +383,7 @@ const STORE_NAMES = {
   '76':'Magee','77':'Collins','78':'Seminary','79':'Laurel','80':'Laurel',
   '81':'Ellisville','82':'Hurley','83':'Pascagoula','84':'Gautier',
   '85':'Moss Point','86':'Ocean Springs','87':'Biloxi','88':'Gulfport',
-  '89':'Gulfport','90':'Long Beach','91':'Pass Christian','92':'Bay St. Louis',
+  '89':'Gulfport','90':'Diberville','91':'Pass Christian','92':'Bay St. Louis',
   '93':'Waveland','94':'Picayune','95':'Poplarville','96':'Carriere',
   '97':'Slidell','98':'Covington','99':'Mandeville','100':'Madisonville',
   '101':'Hammond','102':'Ponchatoula','103':'Amite','104':'Franklinton',
@@ -626,6 +627,7 @@ async function backupToSupabase(){
   var statusEl=document.getElementById('backup-status');
   statusEl.className='backup-status show loading';
   statusEl.textContent='Saving inspection data...';
+  document.getElementById('report-link-wrap').style.display='none';
 
   try{
     var store=document.getElementById('store-num').value||'';
@@ -713,7 +715,15 @@ async function backupToSupabase(){
 
     var totalUploaded=Object.values(photoKeys).reduce(function(a,v){ return a+v.length; },0);
     statusEl.className='backup-status show success';
-    statusEl.textContent='Saved! ID: '+inspectionId+(totalUploaded>0?' | '+totalUploaded+' photo(s) uploaded':'');
+    statusEl.textContent='Saved!'+(totalUploaded>0?' | '+totalUploaded+' photo(s) uploaded':'');
+
+    // Show Get Link / Send to Store button
+    var linkDiv=document.getElementById('report-link-wrap');
+    var reportURL=window.location.origin+window.location.pathname.replace('index.html','').replace(/\/?$/,'/')+' report.html?id='+inspectionId;
+    reportURL=window.location.origin+(window.location.pathname.endsWith('/')?window.location.pathname:window.location.pathname.replace(/[^\/]*$/,''))+'report.html?id='+inspectionId;
+    linkDiv.innerHTML='<a href="'+reportURL+'" target="_blank" style="display:block;text-align:center;padding:11px;border-radius:10px;background:#1452b8;color:white;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:8px;">&#128196; View Report</a>'
+      +'<button onclick="(function(){navigator.clipboard?navigator.clipboard.writeText(\''+reportURL+'\').then(function(){var b=document.getElementById(\'copy-link-btn\');b.textContent=\'Copied!\';setTimeout(function(){b.textContent=\'&#128279; Copy Link for Store\';},2000);}):prompt(\'Copy this link:\',\''+reportURL+'\');})()" id="copy-link-btn" style="width:100%;padding:11px;border-radius:10px;background:#374151;color:white;border:none;font-size:15px;font-weight:600;cursor:pointer;">&#128279; Copy Link for Store</button>';
+    linkDiv.style.display='block';
 
     // Mark store as inspected today (for Route Map grey-out)
     var storeNum=document.getElementById('store-num').value||'';
