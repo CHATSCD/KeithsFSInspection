@@ -59,13 +59,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .store-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid #f4f4f2; border-left: 4px solid transparent; }
 .store-row:last-child { border-bottom: none; }
 .store-row.unmapped { opacity: 0.5; }
-.store-row input[type=checkbox] { margin-top: 3px; flex-shrink: 0; width: 18px; height: 18px; cursor: pointer; accent-color: #1a2744; }
-.store-row input[type=checkbox]:disabled { cursor: default; }
+.route-cb { margin-top: 0 !important; flex-shrink: 0; width: 18px; height: 18px; cursor: pointer; accent-color: #1a2744; }
+.route-cb:disabled { cursor: default; }
 .store-info { flex: 1; min-width: 0; }
 .store-num-label { font-size: 14px; font-weight: 700; color: #1a2744; }
 .store-dm-label { font-size: 11px; color: #888; }
 .store-addr { font-size: 12px; color: #999; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .store-unmapped-note { font-size: 11px; color: #aaa; font-style: italic; margin-top: 1px; }
+.done-check-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+.done-check-wrap input[type=checkbox] { width: 22px; height: 22px; accent-color: #166534; cursor: pointer; margin: 0; }
+.done-check-wrap .done-label { font-size: 10px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.04em; }
+.store-row.inspected { opacity: 0.55; }
 
 /* Route list */
 .route-list-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid #f4f4f2; }
@@ -77,13 +81,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 /* No stores msg */
 .no-stores-msg { padding: 30px; text-align: center; color: #aaa; font-size: 14px; }
 
-/* Inspected state */
-.store-row.inspected { opacity: 0.55; }
-.done-badge { display: inline-block; background: #dcfce7; color: #166534; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; margin-left: 5px; vertical-align: middle; }
-.clear-done-pill { background: #166534 !important; flex-shrink: 0; }
-.btn-done-toggle { flex-shrink: 0; height: 30px; padding: 0 10px; border-radius: 15px; border: 2px solid #d1d5db; background: white; font-size: 12px; font-weight: 700; color: #555; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; transition: background 0.15s, border-color 0.15s; }
-.btn-done-toggle.is-done { background: #166534; border-color: #166534; color: white; }
-.btn-done-toggle:active { transform: scale(0.9); }
 
 /* Loading overlay */
 .loading-overlay { position: fixed; inset: 0; background: rgba(26,39,68,0.85); display: flex; align-items: center; justify-content: center; z-index: 999; color: white; font-size: 15px; font-weight: 600; }
@@ -270,6 +267,7 @@ async function loadStores() {
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     allStores = await resp.json();
+    await loadInspectedFromSupabase();
     renderStoreList();
     renderMarkers();
     updateSummary();
@@ -318,20 +316,20 @@ function renderStoreList() {
       var disabled = !mapped ? 'disabled' : '';
       var unmappedClass = !mapped ? ' unmapped' : '';
       var doneClass = isDone ? ' inspected' : '';
-      var doneBadge = isDone ? '<span class="done-badge">&#10003; Done</span>' : '';
       var borderColor = isDone ? '#9ca3af' : color;
-      var doneToggleClass = isDone ? ' is-done' : '';
-      var doneToggleIcon = isDone ? '&#10003; Done' : 'Done?';
+      var doneChecked = isDone ? 'checked' : '';
       html += '<div class="store-row' + unmappedClass + doneClass + '" style="border-left-color:' + borderColor + '">' +
-        '<input type="checkbox" ' + checked + ' ' + disabled + ' onchange="toggleStore(\'' + store.id + '\')">' +
+        '<input class="route-cb" type="checkbox" ' + checked + ' ' + disabled + ' onchange="toggleStore(\'' + store.id + '\')">' +
         '<div class="store-info">' +
           '<span class="store-num-label">Store #' + store.store_number + '</span>' +
           ' <span class="store-dm-label">' + esc(dm) + '</span>' +
-          doneBadge +
           (store.address ? '<div class="store-addr">' + esc(store.address) + '</div>' : '') +
           (!mapped ? '<div class="store-unmapped-note">No location — geocode in Admin</div>' : '') +
         '</div>' +
-        '<button class="btn-done-toggle' + doneToggleClass + '" onclick="toggleInspected(\'' + store.store_number + '\')" title="' + (isDone ? 'Mark not done' : 'Mark done') + '">' + doneToggleIcon + '</button>' +
+        '<label class="done-check-wrap" onclick="event.stopPropagation()">' +
+          '<input type="checkbox" ' + doneChecked + ' onchange="toggleInspected(\'' + store.store_number + '\')">' +
+          '<span class="done-label">Done</span>' +
+        '</label>' +
       '</div>';
     });
   });
@@ -489,6 +487,24 @@ function loadInspectedStores() {
   updateClearInspectedBtn();
 }
 
+async function loadInspectedFromSupabase() {
+  try {
+    var cycleStart = localStorage.getItem('kfb_cycle_start') || new Date(Date.now() - 30*24*60*60*1000).toISOString();
+    var resp = await fetch(
+      SUPABASE_URL + '/rest/v1/inspections?select=store_num&created_at=gte.' + encodeURIComponent(cycleStart),
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+    );
+    if (!resp.ok) return;
+    var records = await resp.json();
+    records.forEach(function(r) {
+      if (r.store_num) inspectedStores.add(String(r.store_num));
+    });
+    var kfb = { stores: Array.from(inspectedStores) };
+    localStorage.setItem('kfb_inspected', JSON.stringify(kfb));
+    updateClearInspectedBtn();
+  } catch(e) {}
+}
+
 function toggleInspected(storeNum) {
   storeNum = String(storeNum);
   if (inspectedStores.has(storeNum)) {
@@ -504,6 +520,8 @@ function toggleInspected(storeNum) {
 }
 
 function clearInspected() {
+  if (!confirm('Clear all Done marks and start a fresh cycle?')) return;
+  localStorage.setItem('kfb_cycle_start', new Date().toISOString());
   localStorage.removeItem('kfb_inspected');
   inspectedStores.clear();
   updateClearInspectedBtn();
