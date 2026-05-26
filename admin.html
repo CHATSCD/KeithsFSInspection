@@ -51,7 +51,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .btn-csv:hover { opacity: 0.88; }
 
 /* Table */
-.table-wrap { margin: 0 16px 24px; background: white; border-radius: 12px; border: 1px solid #e0e0dc; overflow: hidden; }
+.table-wrap { margin: 0 16px 24px; background: white; border-radius: 12px; border: 1px solid #e0e0dc; overflow-x: auto; }
 .loading-msg, .empty-msg { padding: 40px; text-align: center; color: #aaa; font-size: 14px; }
 .error-msg { padding: 20px 24px; color: #b52222; font-size: 13px; background: #fdeaea; }
 
@@ -98,6 +98,45 @@ tr.detail-row td { padding: 0; background: #f8f8f5; }
 .no-items-list h4 { font-size: 12px; color: #b52222; font-weight: 700; margin-bottom: 6px; }
 .no-items-list li { font-size: 12px; color: #722; margin-left: 14px; line-height: 1.6; }
 .notes-box { margin-top: 10px; background: #f5f5f2; border-radius: 8px; padding: 10px 13px; font-size: 13px; color: #444; white-space: pre-wrap; }
+
+/* Tabs */
+.tab-bar { display:flex; background:#1a2744; padding:0 16px; }
+.tab-btn { padding:10px 18px; border:none; background:transparent; color:rgba(255,255,255,0.6); font-size:14px; font-weight:600; cursor:pointer; border-bottom:3px solid transparent; }
+.tab-btn.active { color:white; border-bottom-color:#c8a84b; }
+
+/* Stores pane */
+.stores-toolbar { display:flex; justify-content:flex-end; margin-bottom:12px; }
+.btn-add-store { padding:9px 16px; border-radius:9px; background:#1a2744; color:white; border:none; font-size:13px; font-weight:600; cursor:pointer; }
+.btn-add-store:hover { opacity:0.88; }
+.dm-section-header { padding:6px 14px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:white; border-radius:6px; margin-bottom:4px; }
+.store-card { background:white; border-radius:10px; border:1px solid #e0e0dc; margin-bottom:6px; overflow:hidden; }
+.store-card-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-left:4px solid transparent; }
+.store-card-num { font-size:15px; font-weight:700; color:#1a2744; min-width:60px; flex-shrink:0; }
+.store-card-dm { font-size:12px; padding:2px 8px; border-radius:20px; color:white; font-weight:600; white-space:nowrap; flex-shrink:0; }
+.store-card-addr { font-size:12px; color:#888; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.store-card-actions { display:flex; gap:6px; flex-shrink:0; }
+.btn-edit-store { padding:5px 11px; border-radius:7px; background:#f0f0ec; color:#1a2744; border:none; font-size:12px; font-weight:600; cursor:pointer; }
+.btn-del-store { padding:5px 10px; border-radius:7px; background:#fdeaea; color:#b52222; border:none; font-size:12px; font-weight:600; cursor:pointer; }
+.btn-geocode-store { padding:5px 11px; border-radius:7px; background:#fff3de; color:#7a5008; border:none; font-size:12px; font-weight:600; cursor:pointer; }
+
+/* Store Modal */
+.store-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:300; align-items:flex-end; justify-content:center; }
+.store-modal-bg.open { display:flex; }
+.store-modal-panel { background:white; border-radius:20px 20px 0 0; padding:20px 20px 36px; width:100%; max-width:600px; max-height:90vh; overflow-y:auto; }
+.store-modal-panel h3 { font-size:16px; font-weight:700; color:#1a2744; margin-bottom:14px; }
+.form-row { margin-bottom:12px; }
+.form-row label { font-size:11px; color:#666; text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:4px; }
+.form-row input, .form-row select { width:100%; border:1px solid #d0d0cc; border-radius:8px; padding:10px 12px; font-size:15px; background:#f8f8f5; color:#1a1a1a; font-family:inherit; }
+.form-row input:focus, .form-row select:focus { outline:none; border-color:#1a2744; }
+.form-btns { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+.btn-save-geo { padding:13px; border-radius:10px; background:#1a2744; color:white; border:none; font-size:14px; font-weight:600; cursor:pointer; }
+.btn-save-no-geo { padding:12px; border-radius:10px; background:#374151; color:white; border:none; font-size:14px; font-weight:600; cursor:pointer; }
+.btn-cancel-store { padding:11px; border-radius:10px; background:transparent; color:#888; border:1px solid #ddd; font-size:14px; cursor:pointer; }
+.store-form-status { font-size:13px; padding:9px 12px; border-radius:8px; margin-top:8px; display:none; }
+.store-form-status.show { display:block; }
+.store-form-status.loading { background:#f0f0ec; color:#555; }
+.store-form-status.success { background:#e8f5dc; color:#2a6b10; }
+.store-form-status.error { background:#fdeaea; color:#b52222; }
 </style>
 </head>
 <body>
@@ -128,6 +167,13 @@ tr.detail-row td { padding: 0; background: #f8f8f5; }
   <button class="btn-lock" onclick="lock()">&#128274; Lock</button>
 </div>
 
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-inspections" onclick="switchTab('inspections')">Inspections</button>
+  <button class="tab-btn" id="tab-stores" onclick="switchTab('stores')">Stores</button>
+</div>
+
+<div id="pane-inspections">
+
 <div class="stats-row" id="stats-row">
   <div class="stat-card"><div class="stat-label">Total Inspections</div><div class="stat-value" id="st-total">—</div><div class="stat-sub">all time</div></div>
   <div class="stat-card" id="sc-avg"><div class="stat-label">Avg Score</div><div class="stat-value" id="st-avg">—</div><div class="stat-sub">across all inspections</div></div>
@@ -148,7 +194,50 @@ tr.detail-row td { padding: 0; background: #f8f8f5; }
   <div class="loading-msg" id="loading-msg">Loading inspections…</div>
 </div>
 
+</div><!-- /pane-inspections -->
+
+<div id="pane-stores" style="display:none;padding:14px 16px 40px;"></div>
+
 </div><!-- /main-app -->
+
+<!-- Store Add/Edit Modal -->
+<div class="store-modal-bg" id="store-modal-bg">
+  <div class="store-modal-panel">
+    <h3 id="store-modal-title">Add Store</h3>
+    <input type="hidden" id="sf-id">
+    <div class="form-row">
+      <label>Store #</label>
+      <input type="number" id="sf-num" placeholder="e.g. 107" min="1">
+    </div>
+    <div class="form-row">
+      <label>DM Name</label>
+      <select id="sf-dm">
+        <option value="">— Select DM —</option>
+        <option>Kim</option>
+        <option>Tammy</option>
+        <option>Matt</option>
+        <option>Melissa</option>
+        <option>Angela</option>
+        <option>Dawn</option>
+        <option>Kit</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Store Name (optional)</label>
+      <input type="text" id="sf-name" placeholder="e.g. Saucier">
+    </div>
+    <div class="form-row">
+      <label>Address</label>
+      <input type="text" id="sf-addr" placeholder="e.g. 123 Main St, Saucier, MS 39574">
+    </div>
+    <div class="store-form-status" id="store-form-status"></div>
+    <div class="form-btns">
+      <button class="btn-save-geo" onclick="saveStore(true)">&#128205; Save &amp; Place on Map (Geocode)</button>
+      <button class="btn-save-no-geo" onclick="saveStore(false)">&#128190; Save without Geocoding</button>
+      <button class="btn-cancel-store" onclick="closeStoreModal()">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── CONFIG ── Change ADMIN_PIN to your preferred PIN
@@ -301,6 +390,7 @@ function renderTable(rows){
     '<th>Y / N / N/A</th>' +
     '<th onclick="setSort(\'follow_up_date\')">Follow-up ' + sortArrow('follow_up_date') + '</th>' +
     '<th>Status</th>' +
+    '<th>Report</th>' +
     '</tr></thead><tbody>';
 
   rows.forEach(function(r, idx){
@@ -314,6 +404,7 @@ function renderTable(rows){
     var counts = (r.yes_count||0) + ' / ' + (r.no_count||0) + ' / ' + (r.na_count||0);
     var statusPill = makeStatus(r, today);
     var rowId = 'row_' + idx;
+    var reportLink = r.id ? '<a href="report.html?id=' + r.id + '" target="_blank" onclick="event.stopPropagation()" style="background:#1452b8;color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;">&#128279; Open</a>' : '—';
 
     html += '<tr class="data-row" onclick="toggleDetail(\'' + rowId + '\')">' +
       '<td><strong>' + esc(storeLabel) + '</strong></td>' +
@@ -323,8 +414,9 @@ function renderTable(rows){
       '<td style="color:#666">' + counts + '</td>' +
       '<td style="font-size:12px">' + (r.follow_up_date ? fmtDate(r.follow_up_date) : '—') + '</td>' +
       '<td>' + statusPill + '</td>' +
+      '<td>' + reportLink + '</td>' +
       '</tr>' +
-      '<tr class="detail-row" id="' + rowId + '"><td colspan="7"><div class="detail-inner" id="di_' + rowId + '">' + buildDetail(r) + '</div></td></tr>';
+      '<tr class="detail-row" id="' + rowId + '"><td colspan="8"><div class="detail-inner" id="di_' + rowId + '">' + buildDetail(r) + '</div></td></tr>';
   });
 
   html += '</tbody></table>';
@@ -462,6 +554,235 @@ function exportCSV(){
   a.href = url; a.download = 'KeithsFS_Admin_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// ── TABS ──
+var storesLoaded = false;
+
+function switchTab(tab) {
+  var isInsp = tab === 'inspections';
+  document.getElementById('tab-inspections').classList.toggle('active', isInsp);
+  document.getElementById('tab-stores').classList.toggle('active', !isInsp);
+  document.getElementById('pane-inspections').style.display = isInsp ? '' : 'none';
+  document.getElementById('pane-stores').style.display = isInsp ? 'none' : '';
+  if (!isInsp && !storesLoaded) { storesLoaded = true; loadStores(); }
+}
+
+// ── STORES DATA ──
+var allStoresData = [];
+
+const DM_COLORS_ADMIN = {
+  Kim: '#0099ff', Tammy: '#22c55e', Matt: '#f97316',
+  Melissa: '#a855f7', Angela: '#ec4899', Dawn: '#14b8a6', Kit: '#eab308'
+};
+const DM_ORDER_ADMIN = ['Kim','Tammy','Matt','Melissa','Angela','Dawn','Kit'];
+
+async function loadStores() {
+  var pane = document.getElementById('pane-stores');
+  pane.innerHTML = '<div class="loading-msg">Loading stores…</div>';
+  try {
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/stores?select=*&order=store_number', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    allStoresData = await resp.json();
+    renderStoresPane();
+  } catch (err) {
+    pane.innerHTML = '<div class="error-msg">&#9888; Failed to load stores: ' + esc(err.message) + '</div>';
+  }
+}
+
+function renderStoresPane() {
+  var pane = document.getElementById('pane-stores');
+
+  var groups = {};
+  allStoresData.forEach(function(s) {
+    var dm = s.dm_name || 'Unknown';
+    if (!groups[dm]) groups[dm] = [];
+    groups[dm].push(s);
+  });
+
+  var dmKeys = DM_ORDER_ADMIN.filter(function(d) { return groups[d]; });
+  if (groups['Unknown']) dmKeys.push('Unknown');
+
+  var html = '<div class="stores-toolbar"><button class="btn-add-store" onclick="openStoreModal()">+ Add Store</button></div>';
+
+  dmKeys.forEach(function(dm) {
+    var color = DM_COLORS_ADMIN[dm] || '#374151';
+    html += '<div class="dm-section-header" style="background:' + color + '">' + esc(dm) + ' (' + groups[dm].length + ')</div>';
+    groups[dm].forEach(function(store) {
+      var mapped = store.lat && store.lng;
+      html += '<div class="store-card">' +
+        '<div class="store-card-row" style="border-left-color:' + color + '">' +
+          '<span class="store-card-num">Store #' + store.store_number + '</span>' +
+          '<span class="store-card-dm" style="background:' + color + '">' + esc(dm) + '</span>' +
+          '<span class="store-card-addr">' + esc(store.address || '—') + '</span>' +
+          '<div class="store-card-actions">' +
+            (!mapped ? '<button class="btn-geocode-store" onclick="geocodeExisting(\'' + store.id + '\')">&#128205; Geocode</button>' : '') +
+            '<button class="btn-edit-store" onclick="openStoreModal(\'' + store.id + '\')">Edit</button>' +
+            '<button class="btn-del-store" onclick="deleteStore(\'' + store.id + '\',' + store.store_number + ')">Del</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    });
+  });
+
+  pane.innerHTML = html;
+}
+
+// ── STORE MODAL ──
+function openStoreModal(id) {
+  var modal = document.getElementById('store-modal-bg');
+  var title = document.getElementById('store-modal-title');
+  var sfId = document.getElementById('sf-id');
+  var sfNum = document.getElementById('sf-num');
+  var sfDm = document.getElementById('sf-dm');
+  var sfName = document.getElementById('sf-name');
+  var sfAddr = document.getElementById('sf-addr');
+  var status = document.getElementById('store-form-status');
+
+  status.className = 'store-form-status'; status.textContent = '';
+
+  if (id) {
+    var store = allStoresData.find(function(s) { return s.id === id; });
+    if (!store) return;
+    title.textContent = 'Edit Store #' + store.store_number;
+    sfId.value = store.id;
+    sfNum.value = store.store_number;
+    sfDm.value = store.dm_name || '';
+    sfName.value = store.name || '';
+    sfAddr.value = store.address || '';
+  } else {
+    title.textContent = 'Add Store';
+    sfId.value = '';
+    sfNum.value = '';
+    sfDm.value = '';
+    sfName.value = '';
+    sfAddr.value = '';
+  }
+
+  modal.classList.add('open');
+}
+
+function closeStoreModal() {
+  document.getElementById('store-modal-bg').classList.remove('open');
+}
+
+async function saveStore(withGeocode) {
+  var id = document.getElementById('sf-id').value;
+  var num = parseInt(document.getElementById('sf-num').value, 10);
+  var dm = document.getElementById('sf-dm').value;
+  var name = document.getElementById('sf-name').value.trim();
+  var addr = document.getElementById('sf-addr').value.trim();
+  var statusEl = document.getElementById('store-form-status');
+
+  if (!num || isNaN(num)) { alert('Please enter a store number.'); return; }
+  if (!dm) { alert('Please select a DM.'); return; }
+
+  statusEl.className = 'store-form-status show loading';
+  statusEl.textContent = 'Saving…';
+
+  var storeObj = {
+    store_number: num,
+    dm_name: dm,
+    name: name || null,
+    address: addr || null
+  };
+  if (id) storeObj.id = id;
+
+  // Geocode if requested
+  if (withGeocode && addr) {
+    statusEl.textContent = 'Geocoding address…';
+    try {
+      var geoResp = await fetch(
+        'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(addr) + '&limit=1',
+        { headers: { 'User-Agent': 'KeithsFBInspection/1.0' } }
+      );
+      if (geoResp.ok) {
+        var geoData = await geoResp.json();
+        if (geoData.length > 0) {
+          storeObj.lat = parseFloat(geoData[0].lat);
+          storeObj.lng = parseFloat(geoData[0].lon);
+          statusEl.textContent = 'Geocoded! Saving…';
+        } else {
+          statusEl.textContent = 'Address not found — saving without location…';
+        }
+      }
+    } catch (geoErr) {
+      statusEl.textContent = 'Geocode failed — saving without location…';
+    }
+  }
+
+  // Upsert
+  try {
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/stores', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Prefer': 'resolution=merge-duplicates,return=representation'
+      },
+      body: JSON.stringify(storeObj)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ': ' + await resp.text());
+    statusEl.className = 'store-form-status show success';
+    statusEl.textContent = 'Saved!';
+    setTimeout(function() {
+      closeStoreModal();
+      storesLoaded = false;
+      loadStores();
+    }, 800);
+  } catch (err) {
+    statusEl.className = 'store-form-status show error';
+    statusEl.textContent = 'Save failed: ' + err.message;
+  }
+}
+
+async function geocodeExisting(id) {
+  var store = allStoresData.find(function(s) { return s.id === id; });
+  if (!store || !store.address) { alert('No address to geocode. Edit the store and add an address first.'); return; }
+  try {
+    var geoResp = await fetch(
+      'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(store.address) + '&limit=1',
+      { headers: { 'User-Agent': 'KeithsFBInspection/1.0' } }
+    );
+    if (!geoResp.ok) throw new Error('Geocode request failed');
+    var geoData = await geoResp.json();
+    if (!geoData.length) { alert('Address not found by geocoder.'); return; }
+    var lat = parseFloat(geoData[0].lat);
+    var lng = parseFloat(geoData[0].lon);
+    var patchResp = await fetch(SUPABASE_URL + '/rest/v1/stores?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      },
+      body: JSON.stringify({ lat: lat, lng: lng })
+    });
+    if (!patchResp.ok) throw new Error('Save failed');
+    alert('Geocoded! Store #' + store.store_number + ' placed at ' + lat.toFixed(5) + ', ' + lng.toFixed(5));
+    storesLoaded = false;
+    loadStores();
+  } catch (err) {
+    alert('Geocode error: ' + err.message);
+  }
+}
+
+async function deleteStore(id, storeNum) {
+  if (!confirm('Delete Store #' + storeNum + '? This cannot be undone.')) return;
+  try {
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/stores?id=eq.' + id, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    storesLoaded = false;
+    loadStores();
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
 }
 
 // ── INIT ──

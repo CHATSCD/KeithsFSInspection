@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Route Map – Keith's F.&amp;B. Inspection</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="theme-color" content="#1a2744">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f0ed; color: #1a1a1a; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Header */
+.app-header { background: #1a2744; color: white; padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 500; }
+.header-icon { width: 30px; height: 30px; flex-shrink: 0; border-radius: 7px; overflow: hidden; }
+.header-icon img { width: 100%; height: 100%; object-fit: cover; }
+.header-text h1 { font-size: 16px; font-weight: 600; }
+.header-text .sub { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.05em; }
+.btn-back { margin-left: auto; background: rgba(255,255,255,0.15); color: white; text-decoration: none; padding: 6px 12px; border-radius: 8px; font-size: 13px; white-space: nowrap; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+
+/* Filter bar */
+.filter-bar { background: #1a2744; padding: 8px 10px; display: flex; gap: 7px; overflow-x: auto; flex-shrink: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; z-index: 400; }
+.filter-bar::-webkit-scrollbar { display: none; }
+.dm-pill { border: none; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; opacity: 0.65; color: white; -webkit-tap-highlight-color: transparent; transition: opacity 0.15s; flex-shrink: 0; }
+.dm-pill.active { opacity: 1; box-shadow: 0 0 0 2px white; }
+
+/* Map */
+#map { flex: 1; z-index: 1; }
+
+/* Floating buttons */
+.float-btns { position: fixed; bottom: 70px; right: 14px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; z-index: 450; transition: bottom 0.3s; }
+.float-btns.panel-open { bottom: 300px; }
+.float-btn { width: 46px; height: 46px; border-radius: 50%; border: none; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.25); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.float-btn:active { transform: scale(0.93); }
+.float-btn.maps-btn { background: #1452b8; color: white; font-size: 13px; font-weight: 700; width: auto; border-radius: 22px; padding: 0 14px; height: 46px; white-space: nowrap; display: none; }
+
+/* Bottom sheet */
+.bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 16px 16px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); z-index: 440; transition: height 0.3s ease; height: 56px; overflow: hidden; }
+.bottom-sheet.expanded { height: 280px; }
+.sheet-handle-bar { height: 56px; min-height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; flex-shrink: 0; user-select: none; border-bottom: 1px solid #f0f0ec; }
+.sheet-handle-bar:active { background: #f8f8f5; }
+.sheet-summary { font-size: 14px; font-weight: 600; color: #1a2744; }
+.sheet-toggle { font-size: 13px; color: #888; background: #f0f0ec; border: none; padding: 5px 11px; border-radius: 20px; cursor: pointer; white-space: nowrap; }
+.sheet-body { height: calc(280px - 56px - 52px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* Optimize row */
+.optimize-row { padding: 10px 14px 6px; display: flex; gap: 8px; }
+.btn-optimize { flex: 1; padding: 10px; border-radius: 10px; background: #1a2744; color: white; border: none; font-size: 14px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.btn-optimize:active { opacity: 0.85; }
+.btn-clear { padding: 10px 14px; border-radius: 10px; background: #f0f0ec; color: #555; border: none; font-size: 14px; font-weight: 600; cursor: pointer; display: none; -webkit-tap-highlight-color: transparent; }
+
+/* DM group headers */
+.dm-group-header { padding: 7px 14px 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: white; }
+
+/* Store rows */
+.store-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 14px; border-bottom: 1px solid #f4f4f2; border-left: 4px solid transparent; }
+.store-row:last-child { border-bottom: none; }
+.store-row.unmapped { opacity: 0.5; }
+.store-row input[type=checkbox] { margin-top: 3px; flex-shrink: 0; width: 18px; height: 18px; cursor: pointer; accent-color: #1a2744; }
+.store-row input[type=checkbox]:disabled { cursor: default; }
+.store-info { flex: 1; min-width: 0; }
+.store-num-label { font-size: 14px; font-weight: 700; color: #1a2744; }
+.store-dm-label { font-size: 11px; color: #888; }
+.store-addr { font-size: 12px; color: #999; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.store-unmapped-note { font-size: 11px; color: #aaa; font-style: italic; margin-top: 1px; }
+
+/* Route list */
+.route-list-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid #f4f4f2; }
+.route-order-num { font-size: 18px; font-weight: 800; color: #1452b8; min-width: 28px; text-align: center; flex-shrink: 0; }
+.route-item-info { flex: 1; min-width: 0; }
+.route-item-name { font-size: 14px; font-weight: 700; color: #1a2744; }
+.route-item-addr { font-size: 12px; color: #999; margin-top: 1px; }
+
+/* No stores msg */
+.no-stores-msg { padding: 30px; text-align: center; color: #aaa; font-size: 14px; }
+
+/* Inspected state */
+.store-row.inspected { opacity: 0.55; }
+.done-badge { display: inline-block; background: #dcfce7; color: #166534; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; margin-left: 5px; vertical-align: middle; }
+.clear-done-pill { background: #166534 !important; flex-shrink: 0; }
+
+/* Loading overlay */
+.loading-overlay { position: fixed; inset: 0; background: rgba(26,39,68,0.85); display: flex; align-items: center; justify-content: center; z-index: 999; color: white; font-size: 15px; font-weight: 600; }
+.loading-overlay.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading-overlay">Loading stores…</div>
+
+<div class="app-header">
+  <div class="header-icon"><img src="icon.png" alt="" onerror="this.style.display='none'"></div>
+  <div class="header-text">
+    <div class="sub">Keith's Superstore</div>
+    <h1>Route Map</h1>
+  </div>
+  <a href="index.html" class="btn-back">&#8592; Back</a>
+</div>
+
+<div class="filter-bar" id="filter-bar">
+  <button class="dm-pill active" data-dm="All" style="background:#374151;" onclick="filterDM('All')">All</button>
+  <button class="dm-pill" data-dm="Kim" style="background:#0099ff;" onclick="filterDM('Kim')">Kim</button>
+  <button class="dm-pill" data-dm="Tammy" style="background:#22c55e;" onclick="filterDM('Tammy')">Tammy</button>
+  <button class="dm-pill" data-dm="Matt" style="background:#f97316;" onclick="filterDM('Matt')">Matt</button>
+  <button class="dm-pill" data-dm="Melissa" style="background:#a855f7;" onclick="filterDM('Melissa')">Melissa</button>
+  <button class="dm-pill" data-dm="Angela" style="background:#ec4899;" onclick="filterDM('Angela')">Angela</button>
+  <button class="dm-pill" data-dm="Dawn" style="background:#14b8a6;" onclick="filterDM('Dawn')">Dawn</button>
+  <button class="dm-pill" data-dm="Kit" style="background:#eab308;" onclick="filterDM('Kit')">Kit</button>
+  <button class="dm-pill clear-done-pill" id="clear-inspected-btn" style="display:none;" onclick="clearInspected()">&#10003; Done &middot; Clear</button>
+</div>
+
+<div id="map"></div>
+
+<div class="float-btns panel-collapsed" id="float-btns">
+  <button class="float-btn maps-btn" id="maps-btn" onclick="openGoogleMaps()">&#128663; Maps</button>
+  <button class="float-btn" id="gps-btn" onclick="getGPS()" title="My Location">&#128205;</button>
+</div>
+
+<div class="bottom-sheet" id="bottom-sheet">
+  <div class="sheet-handle-bar" id="sheet-handle" onclick="toggleSheet()">
+    <span class="sheet-summary" id="sheet-summary">0 selected &middot; Optimize Route &#9650;</span>
+    <button class="sheet-toggle" id="sheet-toggle-btn">&#9650; Show</button>
+  </div>
+  <div class="optimize-row">
+    <button class="btn-optimize" id="btn-optimize" onclick="optimizeRoute()">&#128640; Optimize Route</button>
+    <button class="btn-clear" id="btn-clear" onclick="clearRoute()">&#10005; Clear</button>
+  </div>
+  <div class="sheet-body" id="sheet-body">
+    <div id="store-list-container"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zdbaymktrzsmzimwdeua.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkYmF5bWt0cnpzbXppbXdkZXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDAxNTQsImV4cCI6MjA5MTQxNjE1NH0.-NONMuk3lkeL0HTiJtPBNEU3F33Y4dOIb1Iv7_K2Ykw';
+
+const DM_COLORS = {
+  Kim: '#0099ff', Tammy: '#22c55e', Matt: '#f97316',
+  Melissa: '#a855f7', Angela: '#ec4899', Dawn: '#14b8a6', Kit: '#eab308'
+};
+const DM_ORDER = ['Kim','Tammy','Matt','Melissa','Angela','Dawn','Kit'];
+
+var allStores = [];
+var inspectedStores = new Set();
+var selectedIds = new Set();
+var markers = {};
+var map;
+var userLocation = null;
+var userMarker = null;
+var routePolyline = null;
+var routeOrder = [];
+var isRouteMode = false;
+var sheetExpanded = false;
+var currentDMFilter = 'All';
+
+// Init map
+map = L.map('map', { zoomControl: false }).setView([30.5, -89.5], 8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+L.control.zoom({ position: 'topleft' }).addTo(map);
+
+function dmColor(dm) {
+  return DM_COLORS[dm] || '#374151';
+}
+
+function makePinIcon(color, label) {
+  return L.divIcon({
+    className: '',
+    html: '<div style="position:relative;width:36px;text-align:center">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">' +
+      '<path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 26 18 26S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="' + color + '"/>' +
+      '<circle cx="18" cy="18" r="10" fill="white"/>' +
+      '</svg>' +
+      '<div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:9px;font-weight:800;color:' + color + ';font-family:sans-serif;line-height:1">' + label + '</div>' +
+      '</div>',
+    iconSize: [36, 44],
+    iconAnchor: [18, 44],
+    popupAnchor: [0, -44]
+  });
+}
+
+// ── FLOAT BUTTON POSITION ──
+function updateFloatBtnPos() {
+  var fb = document.getElementById('float-btns');
+  if (sheetExpanded) {
+    fb.style.bottom = '294px';
+    fb.classList.remove('panel-collapsed');
+    fb.classList.add('panel-open');
+  } else {
+    fb.style.bottom = '70px';
+    fb.classList.remove('panel-open');
+    fb.classList.add('panel-collapsed');
+  }
+}
+
+// ── TOGGLE SHEET ──
+function toggleSheet() {
+  sheetExpanded = !sheetExpanded;
+  var sheet = document.getElementById('bottom-sheet');
+  var toggleBtn = document.getElementById('sheet-toggle-btn');
+  var summary = document.getElementById('sheet-summary');
+  if (sheetExpanded) {
+    sheet.classList.add('expanded');
+    toggleBtn.textContent = '▼ Hide';
+    summary.textContent = summary.textContent.replace('▲','').trim();
+  } else {
+    sheet.classList.remove('expanded');
+    toggleBtn.textContent = '▲ Show';
+  }
+  updateFloatBtnPos();
+}
+
+// ── MARKERS ──
+function clearAllMarkers() {
+  Object.values(markers).forEach(function(m) { map.removeLayer(m); });
+  markers = {};
+}
+
+function renderMarkers() {
+  clearAllMarkers();
+  var toShow = currentDMFilter === 'All' ? allStores : allStores.filter(function(s) { return s.dm_name === currentDMFilter; });
+  toShow.forEach(function(store) {
+    if (!store.lat || !store.lng) return;
+    var isDone = inspectedStores.has(String(store.store_number));
+    var color = isDone ? '#9ca3af' : dmColor(store.dm_name);
+    var routeIdx = routeOrder.findIndex(function(s) { return s.id === store.id; });
+    var label = isDone ? '✓' : (routeIdx >= 0 ? String(routeIdx + 1) : String(store.store_number));
+    var icon = makePinIcon(color, label);
+    var m = L.marker([store.lat, store.lng], { icon: icon }).addTo(map);
+    var addr = store.address || 'No address';
+    var dm = store.dm_name || 'Unknown';
+    m.bindPopup(
+      '<strong>Store #' + store.store_number + '</strong>' +
+      (store.name ? '<br>' + esc(store.name) : '') +
+      '<br><span style="color:#888;font-size:12px">' + esc(addr) + '</span>' +
+      '<br><span style="font-size:12px;color:' + color + ';font-weight:600">' + esc(dm) + '</span>'
+    );
+    markers[store.id] = m;
+  });
+}
+
+// ── DM FILTER ──
+function filterDM(dm) {
+  currentDMFilter = dm;
+  document.querySelectorAll('.dm-pill').forEach(function(pill) {
+    pill.classList.toggle('active', pill.getAttribute('data-dm') === dm);
+  });
+  renderStoreList();
+  renderMarkers();
+}
+
+// ── LOAD STORES ──
+async function loadStores() {
+  try {
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/stores?select=*&order=store_number', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    allStores = await resp.json();
+    renderStoreList();
+    renderMarkers();
+    updateSummary();
+  } catch (err) {
+    alert('Failed to load stores: ' + err.message);
+  } finally {
+    document.getElementById('loading-overlay').classList.add('hidden');
+  }
+}
+
+// ── STORE LIST ──
+function getVisibleStores() {
+  if (currentDMFilter === 'All') return allStores;
+  return allStores.filter(function(s) { return s.dm_name === currentDMFilter; });
+}
+
+function renderStoreList() {
+  var container = document.getElementById('store-list-container');
+  if (isRouteMode) { renderRouteList(container); return; }
+
+  var stores = getVisibleStores();
+  if (!stores.length) {
+    container.innerHTML = '<div class="no-stores-msg">No stores found.</div>';
+    return;
+  }
+
+  // Group by DM
+  var groups = {};
+  stores.forEach(function(s) {
+    var dm = s.dm_name || 'Unknown';
+    if (!groups[dm]) groups[dm] = [];
+    groups[dm].push(s);
+  });
+
+  var dmKeys = DM_ORDER.filter(function(d) { return groups[d]; });
+  if (groups['Unknown']) dmKeys.push('Unknown');
+
+  var html = '';
+  dmKeys.forEach(function(dm) {
+    var color = dmColor(dm);
+    html += '<div class="dm-group-header" style="background:' + color + '">' + esc(dm) + '</div>';
+    groups[dm].forEach(function(store) {
+      var mapped = store.lat && store.lng;
+      var isDone = inspectedStores.has(String(store.store_number));
+      var checked = selectedIds.has(store.id) ? 'checked' : '';
+      var disabled = !mapped ? 'disabled' : '';
+      var unmappedClass = !mapped ? ' unmapped' : '';
+      var doneClass = isDone ? ' inspected' : '';
+      var doneBadge = isDone ? '<span class="done-badge">&#10003; Done</span>' : '';
+      var borderColor = isDone ? '#9ca3af' : color;
+      html += '<div class="store-row' + unmappedClass + doneClass + '" style="border-left-color:' + borderColor + '">' +
+        '<input type="checkbox" ' + checked + ' ' + disabled + ' onchange="toggleStore(\'' + store.id + '\')">' +
+        '<div class="store-info">' +
+          '<span class="store-num-label">Store #' + store.store_number + '</span>' +
+          ' <span class="store-dm-label">' + esc(dm) + '</span>' +
+          doneBadge +
+          (store.address ? '<div class="store-addr">' + esc(store.address) + '</div>' : '') +
+          (!mapped ? '<div class="store-unmapped-note">No location — geocode in Admin</div>' : '') +
+        '</div>' +
+      '</div>';
+    });
+  });
+  container.innerHTML = html;
+}
+
+function renderRouteList(container) {
+  if (!routeOrder.length) {
+    container.innerHTML = '<div class="no-stores-msg">No route calculated.</div>';
+    return;
+  }
+  var html = '';
+  routeOrder.forEach(function(store, idx) {
+    var color = dmColor(store.dm_name);
+    html += '<div class="route-list-item" style="border-left:4px solid ' + color + '">' +
+      '<div class="route-order-num">' + (idx + 1) + '</div>' +
+      '<div class="route-item-info">' +
+        '<div class="route-item-name">Store #' + store.store_number + (store.name ? ' – ' + esc(store.name) : '') + '</div>' +
+        (store.address ? '<div class="route-item-addr">' + esc(store.address) + '</div>' : '') +
+      '</div>' +
+    '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function toggleStore(id) {
+  if (selectedIds.has(id)) { selectedIds.delete(id); }
+  else { selectedIds.add(id); }
+  updateSummary();
+}
+
+function updateSummary() {
+  var n = selectedIds.size;
+  document.getElementById('sheet-summary').textContent = n + ' selected · Optimize Route ▲';
+}
+
+// ── ROUTE OPTIMIZATION (nearest-neighbor) ──
+function sqDist(lat1, lng1, lat2, lng2) {
+  var dx = lat1 - lat2, dy = lng1 - lng2;
+  return dx * dx + dy * dy;
+}
+
+function optimizeRoute() {
+  var selected = allStores.filter(function(s) { return selectedIds.has(s.id) && s.lat && s.lng; });
+  if (!selected.length) {
+    alert('Select at least one store (stores must have a location).');
+    return;
+  }
+
+  var startLat = userLocation ? userLocation.lat : map.getCenter().lat;
+  var startLng = userLocation ? userLocation.lng : map.getCenter().lng;
+
+  // Nearest-neighbor
+  var remaining = selected.slice();
+  var ordered = [];
+  var curLat = startLat, curLng = startLng;
+  while (remaining.length) {
+    var bestDist = Infinity, bestIdx = -1;
+    remaining.forEach(function(s, i) {
+      var d = sqDist(curLat, curLng, s.lat, s.lng);
+      if (d < bestDist) { bestDist = d; bestIdx = i; }
+    });
+    ordered.push(remaining[bestIdx]);
+    curLat = remaining[bestIdx].lat; curLng = remaining[bestIdx].lng;
+    remaining.splice(bestIdx, 1);
+  }
+
+  routeOrder = ordered;
+  isRouteMode = true;
+
+  // Draw polyline
+  if (routePolyline) { map.removeLayer(routePolyline); }
+  var latlngs = [[startLat, startLng]].concat(ordered.map(function(s) { return [s.lat, s.lng]; }));
+  routePolyline = L.polyline(latlngs, {
+    color: '#1a2744', weight: 3, dashArray: '8, 8', opacity: 0.8
+  }).addTo(map);
+  map.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
+
+  renderMarkers();
+  renderStoreList();
+  document.getElementById('btn-clear').style.display = 'block';
+  document.getElementById('maps-btn').style.display = 'flex';
+  document.getElementById('sheet-summary').textContent = ordered.length + ' stops optimized';
+
+  if (!sheetExpanded) toggleSheet();
+}
+
+// ── CLEAR ROUTE ──
+function clearRoute() {
+  routeOrder = [];
+  isRouteMode = false;
+  selectedIds.clear();
+  if (routePolyline) { map.removeLayer(routePolyline); routePolyline = null; }
+  document.getElementById('btn-clear').style.display = 'none';
+  document.getElementById('maps-btn').style.display = 'none';
+  renderMarkers();
+  renderStoreList();
+  updateSummary();
+}
+
+// ── GOOGLE MAPS ──
+function openGoogleMaps() {
+  if (!routeOrder.length) return;
+  var startLat = userLocation ? userLocation.lat : routeOrder[0].lat;
+  var startLng = userLocation ? userLocation.lng : routeOrder[0].lng;
+  var last = routeOrder[routeOrder.length - 1];
+  var url = 'https://www.google.com/maps/dir/?api=1' +
+    '&origin=' + startLat + ',' + startLng +
+    '&destination=' + last.lat + ',' + last.lng +
+    '&travelmode=driving';
+  if (routeOrder.length > 2 || (routeOrder.length > 1 && userLocation)) {
+    var wptStores = userLocation ? routeOrder.slice(0, routeOrder.length - 1) : routeOrder.slice(1, routeOrder.length - 1);
+    if (wptStores.length) {
+      url += '&waypoints=' + wptStores.map(function(s) { return s.lat + ',' + s.lng; }).join('|');
+    }
+  }
+  window.open(url, '_blank');
+}
+
+// ── GPS ──
+function getGPS() {
+  if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    if (userMarker) map.removeLayer(userMarker);
+    var blueIcon = L.divIcon({
+      className: '',
+      html: '<div style="width:16px;height:16px;background:#1452b8;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
+    userMarker = L.marker([userLocation.lat, userLocation.lng], { icon: blueIcon }).addTo(map);
+    userMarker.bindPopup('Your location').openPopup();
+    map.setView([userLocation.lat, userLocation.lng], 10);
+  }, function(err) {
+    alert('Could not get location: ' + err.message);
+  });
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── INSPECTED STORES ──
+function loadInspectedStores() {
+  inspectedStores.clear();
+  try {
+    var raw = localStorage.getItem('kfb_inspected');
+    if (!raw) return;
+    var data = JSON.parse(raw);
+    var today = new Date().toISOString().slice(0, 10);
+    if (data.date === today && Array.isArray(data.stores)) {
+      data.stores.forEach(function(n) { inspectedStores.add(String(n)); });
+    } else {
+      localStorage.removeItem('kfb_inspected');
+    }
+  } catch(e) {}
+  updateClearInspectedBtn();
+}
+
+function clearInspected() {
+  localStorage.removeItem('kfb_inspected');
+  inspectedStores.clear();
+  updateClearInspectedBtn();
+  renderMarkers();
+  renderStoreList();
+}
+
+function updateClearInspectedBtn() {
+  var btn = document.getElementById('clear-inspected-btn');
+  if (!btn) return;
+  if (inspectedStores.size > 0) {
+    btn.textContent = '✓ ' + inspectedStores.size + ' Done · Clear';
+    btn.style.display = '';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+// ── INIT ──
+loadInspectedStores();
+updateFloatBtnPos();
+loadStores();
+</script>
+</body>
+</html>

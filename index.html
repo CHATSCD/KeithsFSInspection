@@ -706,6 +706,16 @@ async function backupToSupabase(){
     statusEl.className='backup-status show success';
     statusEl.textContent='Saved! ID: '+inspectionId+(totalUploaded>0?' | '+totalUploaded+' photo(s) uploaded':'');
 
+    // Mark store as inspected today (for Route Map grey-out)
+    var storeNum=document.getElementById('store-num').value||'';
+    if(storeNum){
+      var today=new Date().toISOString().slice(0,10);
+      var kfb=JSON.parse(localStorage.getItem('kfb_inspected')||'{}');
+      if(kfb.date!==today) kfb={date:today,stores:[]};
+      if(!kfb.stores.includes(storeNum)) kfb.stores.push(storeNum);
+      localStorage.setItem('kfb_inspected',JSON.stringify(kfb));
+    }
+
   }catch(err){
     statusEl.className='backup-status show error';
     statusEl.textContent='Backup failed: '+err.message;
