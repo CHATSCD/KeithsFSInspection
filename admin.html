@@ -167,6 +167,13 @@ tr.detail-row td { padding: 0; background: #f8f8f5; }
   <button class="btn-lock" onclick="lock()">&#128274; Lock</button>
 </div>
 
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-inspections" onclick="switchTab('inspections')">Inspections</button>
+  <button class="tab-btn" id="tab-stores" onclick="switchTab('stores')">Stores</button>
+</div>
+
+<div id="pane-inspections">
+
 <div class="stats-row" id="stats-row">
   <div class="stat-card"><div class="stat-label">Total Inspections</div><div class="stat-value" id="st-total">—</div><div class="stat-sub">all time</div></div>
   <div class="stat-card" id="sc-avg"><div class="stat-label">Avg Score</div><div class="stat-value" id="st-avg">—</div><div class="stat-sub">across all inspections</div></div>
@@ -187,7 +194,50 @@ tr.detail-row td { padding: 0; background: #f8f8f5; }
   <div class="loading-msg" id="loading-msg">Loading inspections…</div>
 </div>
 
+</div><!-- /pane-inspections -->
+
+<div id="pane-stores" style="display:none;padding:14px 16px 40px;"></div>
+
 </div><!-- /main-app -->
+
+<!-- Store Add/Edit Modal -->
+<div class="store-modal-bg" id="store-modal-bg">
+  <div class="store-modal-panel">
+    <h3 id="store-modal-title">Add Store</h3>
+    <input type="hidden" id="sf-id">
+    <div class="form-row">
+      <label>Store #</label>
+      <input type="number" id="sf-num" placeholder="e.g. 107" min="1">
+    </div>
+    <div class="form-row">
+      <label>DM Name</label>
+      <select id="sf-dm">
+        <option value="">— Select DM —</option>
+        <option>Kim</option>
+        <option>Tammy</option>
+        <option>Matt</option>
+        <option>Melissa</option>
+        <option>Angela</option>
+        <option>Dawn</option>
+        <option>Kit</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Store Name (optional)</label>
+      <input type="text" id="sf-name" placeholder="e.g. Saucier">
+    </div>
+    <div class="form-row">
+      <label>Address</label>
+      <input type="text" id="sf-addr" placeholder="e.g. 123 Main St, Saucier, MS 39574">
+    </div>
+    <div class="store-form-status" id="store-form-status"></div>
+    <div class="form-btns">
+      <button class="btn-save-geo" onclick="saveStore(true)">&#128205; Save &amp; Place on Map (Geocode)</button>
+      <button class="btn-save-no-geo" onclick="saveStore(false)">&#128190; Save without Geocoding</button>
+      <button class="btn-cancel-store" onclick="closeStoreModal()">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── CONFIG ── Change ADMIN_PIN to your preferred PIN
@@ -504,6 +554,235 @@ function exportCSV(){
   a.href = url; a.download = 'KeithsFS_Admin_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// ── TABS ──
+var storesLoaded = false;
+
+function switchTab(tab) {
+  var isInsp = tab === 'inspections';
+  document.getElementById('tab-inspections').classList.toggle('active', isInsp);
+  document.getElementById('tab-stores').classList.toggle('active', !isInsp);
+  document.getElementById('pane-inspections').style.display = isInsp ? '' : 'none';
+  document.getElementById('pane-stores').style.display = isInsp ? 'none' : '';
+  if (!isInsp && !storesLoaded) { storesLoaded = true; loadStores(); }
+}
+
+// ── STORES DATA ──
+var allStoresData = [];
+
+const DM_COLORS_ADMIN = {
+  Kim: '#0099ff', Tammy: '#22c55e', Matt: '#f97316',
+  Melissa: '#a855f7', Angela: '#ec4899', Dawn: '#14b8a6', Kit: '#eab308'
+};
+const DM_ORDER_ADMIN = ['Kim','Tammy','Matt','Melissa','Angela','Dawn','Kit'];
+
+async function loadStores() {
+  var pane = document.getElementById('pane-stores');
+  pane.innerHTML = '<div class="loading-msg">Loading stores…</div>';
+  try {
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/stores?select=*&order=store_number', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    allStoresData = await resp.json();
+    renderStoresPane();
+  } catch (err) {
+    pane.innerHTML = '<div class="error-msg">&#9888; Failed to load stores: ' + esc(err.message) + '</div>';
+  }
+}
+
+function renderStoresPane() {
+  var pane = document.getElementById('pane-stores');
+
+  var groups = {};
+  allStoresData.forEach(function(s) {
+    var dm = s.dm_name || 'Unknown';
+    if (!groups[dm]) groups[dm] = [];
+    groups[dm].push(s);
+  });
+
+  var dmKeys = DM_ORDER_ADMIN.filter(function(d) { return groups[d]; });
+  if (groups['Unknown']) dmKeys.push('Unknown');
+
+  var html = '<div class="stores-toolbar"><button class="btn-add-store" onclick="openStoreModal()">+ Add Store</button></div>';
+
+  dmKeys.forEach(function(dm) {
+    var color = DM_COLORS_ADMIN[dm] || '#374151';
+    html += '<div class="dm-section-header" style="background:' + color + '">' + esc(dm) + ' (' + groups[dm].length + ')</div>';
+    groups[dm].forEach(function(store) {
+      var mapped = store.lat && store.lng;
+      html += '<div class="store-card">' +
+        '<div class="store-card-row" style="border-left-color:' + color + '">' +
+          '<span class="store-card-num">Store #' + store.store_number + '</span>' +
+          '<span class="store-card-dm" style="background:' + color + '">' + esc(dm) + '</span>' +
+          '<span class="store-card-addr">' + esc(store.address || '—') + '</span>' +
+          '<div class="store-card-actions">' +
+            (!mapped ? '<button class="btn-geocode-store" onclick="geocodeExisting(\'' + store.id + '\')">&#128205; Geocode</button>' : '') +
+            '<button class="btn-edit-store" onclick="openStoreModal(\'' + store.id + '\')">Edit</button>' +
+            '<button class="btn-del-store" onclick="deleteStore(\'' + store.id + '\',' + store.store_number + ')">Del</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    });
+  });
+
+  pane.innerHTML = html;
+}
+
+// ── STORE MODAL ──
+function openStoreModal(id) {
+  var modal = document.getElementById('store-modal-bg');
+  var title = document.getElementById('store-modal-title');
+  var sfId = document.getElementById('sf-id');
+  var sfNum = document.getElementById('sf-num');
+  var sfDm = document.getElementById('sf-dm');
+  var sfName = document.getElementById('sf-name');
+  var sfAddr = document.getElementById('sf-addr');
+  var status = document.getElementById('store-form-status');
+
+  status.className = 'store-form-status'; status.textContent = '';
+
+  if (id) {
+    var store = allStoresData.find(function(s) { return s.id === id; });
+    if (!store) return;
+    title.textContent = 'Edit Store #' + store.store_number;
+    sfId.value = store.id;
+    sfNum.value = store.store_number;
+    sfDm.value = store.dm_name || '';
+    sfName.value = store.name || '';
+    sfAddr.value = store.address || '';
+  } else {
+    title.textContent = 'Add Store';
+    sfId.value = '';
+    sfNum.value = '';
+    sfDm.value = '';
+    sfName.value = '';
+    sfAddr.value = '';
+  }
+
+  modal.classList.add('open');
+}
+
+function closeStoreModal() {
+  document.getElementById('store-modal-bg').classList.remove('open');
+}
+
+async function saveStore(withGeocode) {
+  var id = document.getElementById('sf-id').value;
+  var num = parseInt(document.getElementById('sf-num').value, 10);
+  var dm = document.getElementById('sf-dm').value;
+  var name = document.getElementById('sf-name').value.trim();
+  var addr = document.getElementById('sf-addr').value.trim();
+  var statusEl = document.getElementById('store-form-status');
+
+  if (!num || isNaN(num)) { alert('Please enter a store number.'); return; }
+  if (!dm) { alert('Please select a DM.'); return; }
+
+  statusEl.className = 'store-form-status show loading';
+  statusEl.textContent = 'Saving…';
+
+  var storeObj = {
+    store_number: num,
+    dm_name: dm,
+    name: name || null,
+    address: addr || null
+  };
+  if (id) storeObj.id = id;
+
+  // Geocode if requested
+  if (withGeocode && addr) {
+    statusEl.textContent = 'Geocoding address…';
+    try {
+      var geoResp = await fetch(
+        'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(addr) + '&limit=1',
+        { headers: { 'User-Agent': 'KeithsFBInspection/1.0' } }
+      );
+      if (geoResp.ok) {
+        var geoData = await geoResp.json();
+        if (geoData.length > 0) {
+          storeObj.lat = parseFloat(geoData[0].lat);
+          storeObj.lng = parseFloat(geoData[0].lon);
+          statusEl.textContent = 'Geocoded! Saving…';
+        } else {
+          statusEl.textContent = 'Address not found — saving without location…';
+        }
+      }
+    } catch (geoErr) {
+      statusEl.textContent = 'Geocode failed — saving without location…';
+    }
+  }
+
+  // Upsert
+  try {
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/stores', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Prefer': 'resolution=merge-duplicates,return=representation'
+      },
+      body: JSON.stringify(storeObj)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ': ' + await resp.text());
+    statusEl.className = 'store-form-status show success';
+    statusEl.textContent = 'Saved!';
+    setTimeout(function() {
+      closeStoreModal();
+      storesLoaded = false;
+      loadStores();
+    }, 800);
+  } catch (err) {
+    statusEl.className = 'store-form-status show error';
+    statusEl.textContent = 'Save failed: ' + err.message;
+  }
+}
+
+async function geocodeExisting(id) {
+  var store = allStoresData.find(function(s) { return s.id === id; });
+  if (!store || !store.address) { alert('No address to geocode. Edit the store and add an address first.'); return; }
+  try {
+    var geoResp = await fetch(
+      'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(store.address) + '&limit=1',
+      { headers: { 'User-Agent': 'KeithsFBInspection/1.0' } }
+    );
+    if (!geoResp.ok) throw new Error('Geocode request failed');
+    var geoData = await geoResp.json();
+    if (!geoData.length) { alert('Address not found by geocoder.'); return; }
+    var lat = parseFloat(geoData[0].lat);
+    var lng = parseFloat(geoData[0].lon);
+    var patchResp = await fetch(SUPABASE_URL + '/rest/v1/stores?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      },
+      body: JSON.stringify({ lat: lat, lng: lng })
+    });
+    if (!patchResp.ok) throw new Error('Save failed');
+    alert('Geocoded! Store #' + store.store_number + ' placed at ' + lat.toFixed(5) + ', ' + lng.toFixed(5));
+    storesLoaded = false;
+    loadStores();
+  } catch (err) {
+    alert('Geocode error: ' + err.message);
+  }
+}
+
+async function deleteStore(id, storeNum) {
+  if (!confirm('Delete Store #' + storeNum + '? This cannot be undone.')) return;
+  try {
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/stores?id=eq.' + id, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    storesLoaded = false;
+    loadStores();
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
 }
 
 // ── INIT ──

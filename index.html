@@ -106,6 +106,8 @@ input[type=file] { display: none; }
 .btn-backup { width: 100%; padding: 13px; border-radius: 12px; background: #6d28d9; color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .btn-backup:active { opacity: 0.88; }
 .export-note { font-size: 11px; color: #999; text-align: center; margin-top: -4px; }
+.btn-route { display:block; padding:14px; border-radius:12px; background:#1452b8; color:white; text-align:center; font-size:15px; font-weight:600; text-decoration:none; -webkit-tap-highlight-color:transparent; }
+.btn-admin-link { display:block; padding:14px; border-radius:12px; background:#374151; color:white; text-align:center; font-size:15px; font-weight:600; text-decoration:none; -webkit-tap-highlight-color:transparent; }
 
 .backup-status { font-size: 13px; padding: 10px 12px; border-radius: 8px; display: none; }
 .backup-status.show { display: block; }
@@ -209,6 +211,10 @@ input[type=file] { display: none; }
 </div>
 
 <div class="actions">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <a href="map.html" class="btn-route">&#128506;&#65039; Route Map</a>
+    <a href="admin.html" class="btn-admin-link">&#9881;&#65039; Admin Panel</a>
+  </div>
   <button class="btn-export" onclick="exportPDF()">&#128196; Export PDF Report</button>
   <p class="export-note">Photos are embedded in the PDF for every answered item</p>
   <button class="btn-print" onclick="printReport()">&#128438; Print Report</button>
