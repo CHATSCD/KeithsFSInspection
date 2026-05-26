@@ -709,9 +709,8 @@ async function backupToSupabase(){
     // Mark store as inspected today (for Route Map grey-out)
     var storeNum=document.getElementById('store-num').value||'';
     if(storeNum){
-      var today=new Date().toISOString().slice(0,10);
-      var kfb=JSON.parse(localStorage.getItem('kfb_inspected')||'{}');
-      if(kfb.date!==today) kfb={date:today,stores:[]};
+      var kfb=JSON.parse(localStorage.getItem('kfb_inspected')||'{"stores":[]}');
+      if(!Array.isArray(kfb.stores)) kfb.stores=[];
       if(!kfb.stores.includes(storeNum)) kfb.stores.push(storeNum);
       localStorage.setItem('kfb_inspected',JSON.stringify(kfb));
     }

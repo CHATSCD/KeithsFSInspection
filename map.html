@@ -471,11 +471,8 @@ function loadInspectedStores() {
     var raw = localStorage.getItem('kfb_inspected');
     if (!raw) return;
     var data = JSON.parse(raw);
-    var today = new Date().toISOString().slice(0, 10);
-    if (data.date === today && Array.isArray(data.stores)) {
+    if (Array.isArray(data.stores)) {
       data.stores.forEach(function(n) { inspectedStores.add(String(n)); });
-    } else {
-      localStorage.removeItem('kfb_inspected');
     }
   } catch(e) {}
   updateClearInspectedBtn();
