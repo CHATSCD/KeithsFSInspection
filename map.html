@@ -81,6 +81,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .store-row.inspected { opacity: 0.55; }
 .done-badge { display: inline-block; background: #dcfce7; color: #166534; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; margin-left: 5px; vertical-align: middle; }
 .clear-done-pill { background: #166534 !important; flex-shrink: 0; }
+.btn-done-toggle { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: 2px solid #d1d5db; background: white; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; transition: background 0.15s, border-color 0.15s; }
+.btn-done-toggle.is-done { background: #166534; border-color: #166534; color: white; }
+.btn-done-toggle:active { transform: scale(0.9); }
 
 /* Loading overlay */
 .loading-overlay { position: fixed; inset: 0; background: rgba(26,39,68,0.85); display: flex; align-items: center; justify-content: center; z-index: 999; color: white; font-size: 15px; font-weight: 600; }
@@ -234,11 +237,16 @@ function renderMarkers() {
     var m = L.marker([store.lat, store.lng], { icon: icon }).addTo(map);
     var addr = store.address || 'No address';
     var dm = store.dm_name || 'Unknown';
+    var popupDoneLabel = isDone ? '&#10007; Mark Not Done' : '&#10003; Mark Done';
+    var popupDoneStyle = isDone ? 'background:#dc2626' : 'background:#166534';
+    var snum = store.store_number;
     m.bindPopup(
-      '<strong>Store #' + store.store_number + '</strong>' +
+      '<strong>Store #' + snum + '</strong>' +
       (store.name ? '<br>' + esc(store.name) : '') +
       '<br><span style="color:#888;font-size:12px">' + esc(addr) + '</span>' +
-      '<br><span style="font-size:12px;color:' + color + ';font-weight:600">' + esc(dm) + '</span>'
+      '<br><span style="font-size:12px;color:' + color + ';font-weight:600">' + esc(dm) + '</span>' +
+      '<br><button onclick="toggleInspected(\'' + snum + '\');this.closest(\'.leaflet-popup\').querySelector(\'.leaflet-popup-close-button\').click()" ' +
+      'style="margin-top:8px;width:100%;padding:7px;border:none;border-radius:7px;' + popupDoneStyle + ';color:white;font-size:13px;font-weight:700;cursor:pointer">' + popupDoneLabel + '</button>'
     );
     markers[store.id] = m;
   });
@@ -312,6 +320,8 @@ function renderStoreList() {
       var doneClass = isDone ? ' inspected' : '';
       var doneBadge = isDone ? '<span class="done-badge">&#10003; Done</span>' : '';
       var borderColor = isDone ? '#9ca3af' : color;
+      var doneToggleClass = isDone ? ' is-done' : '';
+      var doneToggleIcon = isDone ? '&#10003;' : '&#9711;';
       html += '<div class="store-row' + unmappedClass + doneClass + '" style="border-left-color:' + borderColor + '">' +
         '<input type="checkbox" ' + checked + ' ' + disabled + ' onchange="toggleStore(\'' + store.id + '\')">' +
         '<div class="store-info">' +
@@ -321,6 +331,7 @@ function renderStoreList() {
           (store.address ? '<div class="store-addr">' + esc(store.address) + '</div>' : '') +
           (!mapped ? '<div class="store-unmapped-note">No location — geocode in Admin</div>' : '') +
         '</div>' +
+        '<button class="btn-done-toggle' + doneToggleClass + '" onclick="toggleInspected(\'' + store.store_number + '\')" title="' + (isDone ? 'Mark not done' : 'Mark done') + '">' + doneToggleIcon + '</button>' +
       '</div>';
     });
   });
@@ -476,6 +487,20 @@ function loadInspectedStores() {
     }
   } catch(e) {}
   updateClearInspectedBtn();
+}
+
+function toggleInspected(storeNum) {
+  storeNum = String(storeNum);
+  if (inspectedStores.has(storeNum)) {
+    inspectedStores.delete(storeNum);
+  } else {
+    inspectedStores.add(storeNum);
+  }
+  var kfb = { stores: Array.from(inspectedStores) };
+  localStorage.setItem('kfb_inspected', JSON.stringify(kfb));
+  updateClearInspectedBtn();
+  renderMarkers();
+  renderStoreList();
 }
 
 function clearInspected() {
