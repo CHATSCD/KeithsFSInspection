@@ -727,11 +727,11 @@ async function backupToSupabase(){
     statusEl.textContent='Saved!'+(totalUploaded>0?' | '+totalUploaded+' photo(s) uploaded':'');
 
     // Show Get Link / Send to Store button
+    var base=window.location.origin+window.location.pathname.replace(/[^\/]*$/,'');
+    window._lastReportURL=base+'report.html?id='+inspectionId;
     var linkDiv=document.getElementById('report-link-wrap');
-    var reportURL=window.location.origin+window.location.pathname.replace('index.html','').replace(/\/?$/,'/')+' report.html?id='+inspectionId;
-    reportURL=window.location.origin+(window.location.pathname.endsWith('/')?window.location.pathname:window.location.pathname.replace(/[^\/]*$/,''))+'report.html?id='+inspectionId;
-    linkDiv.innerHTML='<a href="'+reportURL+'" target="_blank" style="display:block;text-align:center;padding:11px;border-radius:10px;background:#1452b8;color:white;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:8px;">&#128196; View Report</a>'
-      +'<button onclick="(function(){navigator.clipboard?navigator.clipboard.writeText(\''+reportURL+'\').then(function(){var b=document.getElementById(\'copy-link-btn\');b.textContent=\'Copied!\';setTimeout(function(){b.textContent=\'&#128279; Copy Link for Store\';},2000);}):prompt(\'Copy this link:\',\''+reportURL+'\');})()" id="copy-link-btn" style="width:100%;padding:11px;border-radius:10px;background:#374151;color:white;border:none;font-size:15px;font-weight:600;cursor:pointer;">&#128279; Copy Link for Store</button>';
+    linkDiv.innerHTML='<a href="'+window._lastReportURL+'" target="_blank" style="display:block;text-align:center;padding:11px;border-radius:10px;background:#1452b8;color:white;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:8px;">&#128196; View Report</a>'
+      +'<button id="copy-link-btn" onclick="copyReportLink()" style="width:100%;padding:11px;border-radius:10px;background:#374151;color:white;border:none;font-size:15px;font-weight:600;cursor:pointer;">&#128279; Copy Link for Store</button>';
     linkDiv.style.display='block';
 
     // Mark store as inspected today (for Route Map grey-out)
@@ -747,6 +747,20 @@ async function backupToSupabase(){
     statusEl.className='backup-status show error';
     statusEl.textContent='Backup failed: '+err.message;
     console.error(err);
+  }
+}
+
+function copyReportLink(){
+  var url=window._lastReportURL||'';
+  var btn=document.getElementById('copy-link-btn');
+  if(!url) return;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      btn.textContent='Copied!';
+      setTimeout(function(){ btn.textContent='🔗 Copy Link for Store'; },2000);
+    }).catch(function(){ prompt('Copy this link:',url); });
+  } else {
+    prompt('Copy this link:',url);
   }
 }
 
