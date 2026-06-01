@@ -404,7 +404,13 @@ function renderTable(rows){
     var counts = (r.yes_count||0) + ' / ' + (r.no_count||0) + ' / ' + (r.na_count||0);
     var statusPill = makeStatus(r, today);
     var rowId = 'row_' + idx;
-    var reportLink = r.id ? '<a href="report.html?id=' + r.id + '" target="_blank" onclick="event.stopPropagation()" style="background:#1452b8;color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;">&#128279; Open</a>' : '—';
+    var reportURL = r.id ? (window.location.origin + window.location.pathname.replace(/[^\/]*$/, '') + 'report.html?id=' + r.id) : '';
+    var reportLink = reportURL
+      ? '<div style="display:flex;gap:5px;align-items:center">'
+        + '<a href="' + reportURL + '" target="_blank" onclick="event.stopPropagation()" style="background:#1452b8;color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;">&#128196; View</a>'
+        + '<button onclick="event.stopPropagation();copyAdminLink(this,\'' + reportURL + '\')" style="background:#374151;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">&#128279; Copy</button>'
+        + '</div>'
+      : '—';
 
     html += '<tr class="data-row" onclick="toggleDetail(\'' + rowId + '\')">' +
       '<td><strong>' + esc(storeLabel) + '</strong></td>' +
@@ -508,6 +514,17 @@ function fmtDate(d){
 
 function esc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function copyAdminLink(btn, url){
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      var orig=btn.textContent; btn.textContent='Copied!';
+      setTimeout(function(){ btn.textContent=orig; }, 2000);
+    }).catch(function(){ prompt('Copy this link:',url); });
+  } else {
+    prompt('Copy this link:',url);
+  }
 }
 
 // ── CSV EXPORT ──
