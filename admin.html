@@ -465,7 +465,26 @@ function buildDetail(r){
   if(noItems.length){
     html += '<div class="no-items-list"><h4>&#10060; NO items (' + noItems.length + ')</h4><ul>' +
       noItems.map(function(it){ return '<li>' + esc(it) + '</li>'; }).join('') +
-      '</ul></div>';
+      '</ul>';
+    if(r.id){
+      var fuURL = window.location.pathname.replace(/[^\/]*$/, '') + 'followup.html?id=' + r.id;
+      html += '<a href="' + fuURL + '" target="_blank" style="display:inline-block;margin-top:8px;background:#e8a935;color:#1a2744;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">&#128203; Start Follow-Up Checklist</a>';
+    }
+    html += '</div>';
+  }
+
+  if(r.followup_data){
+    var fd = r.followup_data;
+    html += '<div style="margin-top:10px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;">' +
+      '<h4 style="font-size:13px;color:#166534;margin-bottom:6px;">&#9989; Follow-Up Completed</h4>' +
+      '<div style="font-size:12px;color:#555;">' +
+        'Date: ' + (fd.date ? fmtDate(fd.date) : '—') + ' &nbsp;|&nbsp; Inspector: ' + esc(fd.inspector||'—') +
+        ' &nbsp;|&nbsp; Corrected: <strong style="color:#16a34a;">' + (fd.corrected_count||0) + '</strong>' +
+        ' &nbsp;|&nbsp; Still Deficient: <strong style="color:#dc2626;">' + (fd.still_no_count||0) + '</strong>' +
+        ' &nbsp;|&nbsp; Rate: <strong>' + (fd.correction_rate||0) + '%</strong>' +
+      '</div>' +
+      (fd.notes ? '<div style="margin-top:6px;font-size:12px;color:#666;">Notes: ' + esc(fd.notes) + '</div>' : '') +
+    '</div>';
   }
 
   if(r.notes && r.notes.trim()){
