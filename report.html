@@ -271,6 +271,10 @@ function render(r){
     html+='<button id="dl-all-btn" onclick="downloadAllPhotos()" style="padding:10px 16px;border-radius:10px;background:#1452b8;color:white;border:none;font-size:14px;font-weight:600;cursor:pointer;">&#128247; Download All Photos (ZIP)</button>';
   }
   html+='<button onclick="exportPDF()" style="padding:10px 16px;border-radius:10px;background:#1a2744;color:white;border:none;font-size:14px;font-weight:600;cursor:pointer;">&#128196; Download PDF</button>';
+  if(no>0){
+    var fuURL=window.location.pathname.replace(/[^\/]*$/,'')+'followup.html?id='+r.id;
+    html+='<a href="'+fuURL+'" style="padding:10px 16px;border-radius:10px;background:#e8a935;color:#1a2744;border:none;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;">&#128203; Follow-Up Checklist</a>';
+  }
   html+='</div>';
 
   // Header

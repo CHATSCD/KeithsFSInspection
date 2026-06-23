@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Follow-Up Checklist – Keith's F.&.B.</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="theme-color" content="#1452b8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f0ed; color: #1a1a1a; min-height: 100vh; }
+
+.app-header { background: #1a2744; color: white; padding: 14px 16px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.header-icon { width: 34px; height: 34px; background: #e8a935; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.header-text .store-label { font-size: 11px; opacity: 0.6; letter-spacing: 0.05em; text-transform: uppercase; }
+.header-text h1 { font-size: 17px; font-weight: 600; }
+
+.loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
+.error-msg { text-align: center; padding: 60px 20px; color: #b52222; font-size: 15px; }
+
+.meta-card { background: white; margin: 12px; border-radius: 12px; border: 1px solid #e0e0dc; padding: 14px; }
+.meta-row { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #555; margin-bottom: 6px; }
+.meta-row:last-child { margin-bottom: 0; }
+.meta-row strong { color: #1a1a1a; }
+
+.deadline-bar { margin: 0 12px 10px; border-radius: 12px; padding: 11px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.deadline-bar.on-time { background: #fff8ec; border: 1px solid #e8c97a; color: #7a4f0a; }
+.deadline-bar.overdue { background: #fef2f2; border: 1px solid #e8a0a0; color: #991b1b; }
+
+.fu-field { background: white; margin: 0 12px 10px; border-radius: 12px; border: 1px solid #e0e0dc; padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fu-field label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
+.fu-field input { width: 100%; border: 1px solid #d0d0cc; border-radius: 8px; padding: 9px 10px; font-size: 15px; background: #f8f8f5; color: #1a1a1a; }
+.fu-field input:focus { outline: none; border-color: #1a2744; }
+.fu-field .full { grid-column: 1 / -1; }
+
+.progress { margin: 0 12px 10px; background: white; border-radius: 12px; border: 1px solid #e0e0dc; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+.prog-bar { flex: 1; height: 8px; background: #e8e8e4; border-radius: 4px; overflow: hidden; }
+.prog-fill { height: 100%; background: #1a9a5c; border-radius: 4px; transition: width 0.3s; width: 0%; }
+.prog-text { font-size: 13px; color: #666; font-weight: 600; white-space: nowrap; }
+
+.section { background: white; margin: 0 12px 10px; border-radius: 12px; border: 1px solid #e0e0dc; overflow: hidden; }
+.sec-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; user-select: none; }
+.sec-left { display: flex; align-items: center; gap: 8px; }
+.sec-icon { font-size: 20px; }
+.sec-title { font-size: 15px; font-weight: 600; }
+.sec-right { display: flex; align-items: center; gap: 8px; }
+.sec-badge { background: #e8e8e4; color: #555; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+.chevron { font-size: 14px; color: #999; transition: transform 0.2s; }
+.chevron.open { transform: rotate(180deg); }
+.sec-body { display: none; border-top: 1px solid #e8e8e4; }
+.sec-body.open { display: block; }
+
+.c-item { padding: 12px 14px; border-bottom: 1px solid #f0f0ed; }
+.c-item:last-child { border-bottom: none; }
+.item-row { display: flex; align-items: flex-start; gap: 8px; }
+.item-text { flex: 1; font-size: 14px; line-height: 1.4; padding-top: 2px; }
+.item-original { font-size: 11px; color: #b52222; margin-top: 2px; font-weight: 600; }
+.item-controls { display: flex; gap: 5px; flex-shrink: 0; }
+
+.btn-corr { padding: 6px 10px; border-radius: 8px; border: 1.5px solid #d0d0cc; background: white; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.btn-corr.yes { color: #166534; }
+.btn-corr.no { color: #991b1b; }
+.btn-corr.sel-yes { background: #16a34a; color: white; border-color: #16a34a; }
+.btn-corr.sel-no { background: #dc2626; color: white; border-color: #dc2626; }
+
+.btn-cam { padding: 6px 8px; border-radius: 8px; border: 1.5px solid #d0d0cc; background: white; font-size: 14px; cursor: pointer; }
+.btn-cam.has { background: #e0edff; border-color: #6ba3f7; }
+
+.photo-zone { display: none; padding: 8px 0 4px; }
+.photo-zone.open { display: block; }
+.photo-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px; }
+.add-tile { width: 72px; height: 72px; border: 2px dashed #ccc; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; font-size: 10px; color: #888; }
+.add-tile .plus { font-size: 22px; color: #aaa; }
+.thumb { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0; cursor: pointer; }
+
+.orig-photos { padding: 6px 0 2px; }
+.orig-photos-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+.orig-photo-row { display: flex; gap: 6px; overflow-x: auto; }
+.orig-thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0; opacity: 0.7; }
+
+.notes-card { background: white; margin: 0 12px 10px; border-radius: 12px; border: 1px solid #e0e0dc; padding: 14px; }
+.notes-card h2 { font-size: 15px; margin-bottom: 8px; }
+.notes-card textarea { width: 100%; border: 1px solid #d0d0cc; border-radius: 8px; padding: 10px; font-size: 14px; min-height: 80px; resize: vertical; font-family: inherit; background: #f8f8f5; }
+
+.actions { margin: 0 12px 20px; display: flex; flex-direction: column; gap: 8px; }
+.btn-action { padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; text-align: center; }
+.btn-save { background: #1a9a5c; color: white; }
+.btn-save:disabled { background: #a0c4b0; cursor: not-allowed; }
+.btn-pdf { background: #1a2744; color: white; }
+.btn-link { background: #374151; color: white; text-decoration: none; display: block; }
+
+.save-status { margin: 0 12px 10px; padding: 12px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; text-align: center; display: none; }
+.save-status.show { display: block; }
+.save-status.loading { background: #e0edff; color: #1452b8; }
+.save-status.success { background: #ecfdf5; color: #166534; }
+.save-status.error { background: #fef2f2; color: #991b1b; }
+
+.summary-card { background: white; margin: 0 12px 10px; border-radius: 12px; border: 1px solid #e0e0dc; padding: 14px; display: none; }
+.summary-card.show { display: block; }
+.summary-card h2 { font-size: 15px; margin-bottom: 10px; }
+.summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0ed; font-size: 14px; }
+.summary-row:last-child { border-bottom: none; }
+.summary-val { font-weight: 700; }
+.summary-val.green { color: #16a34a; }
+.summary-val.red { color: #dc2626; }
+.summary-val.gray { color: #888; }
+
+/* Lightbox */
+.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; align-items: center; justify-content: center; }
+.lightbox.open { display: flex; }
+.lightbox img { max-width: 95vw; max-height: 90vh; border-radius: 8px; }
+.lb-close { position: fixed; top: 16px; right: 16px; background: rgba(255,255,255,0.15); color: white; border: none; font-size: 28px; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; }
+
+@media print {
+  .app-header, .actions, .btn-cam, .photo-zone, .save-status { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-icon">&#128203;</div>
+  <div class="header-text">
+    <div class="store-label">Keith's Superstore</div>
+    <h1>Follow-Up Checklist</h1>
+  </div>
+  <a href="index.html" style="margin-left:auto;background:rgba(255,255,255,0.15);color:white;text-decoration:none;padding:7px 13px;border-radius:8px;font-size:13px;">&#127978; New Inspection</a>
+</div>
+
+<div id="loading" class="loading">Loading inspection data...</div>
+<div id="error" class="error-msg" style="display:none;"></div>
+
+<div id="main-content" style="display:none;">
+  <div class="meta-card" id="meta-card"></div>
+  <div class="deadline-bar" id="deadline-bar"></div>
+
+  <div class="fu-field">
+    <div><label>Follow-Up Date</label><input type="date" id="fu-date"></div>
+    <div><label>Inspector</label><input type="text" id="fu-inspector" placeholder="Your name"></div>
+  </div>
+
+  <div class="progress">
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+    <span class="prog-text" id="prog-text">0 / 0</span>
+  </div>
+
+  <div id="sections"></div>
+
+  <div class="notes-card">
+    <h2>Follow-Up Notes</h2>
+    <textarea id="fu-notes" placeholder="Add notes about corrections, remaining issues, or actions taken..."></textarea>
+  </div>
+
+  <div class="summary-card" id="summary-card">
+    <h2>Summary</h2>
+    <div id="summary-body"></div>
+  </div>
+
+  <div class="save-status" id="save-status"></div>
+
+  <div class="actions">
+    <button class="btn-action btn-save" id="btn-save" onclick="saveFollowUp()">Save Follow-Up to Cloud</button>
+    <button class="btn-action btn-pdf" onclick="exportPDF()">&#128196; Download PDF Report</button>
+    <a class="btn-action btn-link" id="btn-report" href="#" style="display:none;">&#128196; View Original Inspection Report</a>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lb-close" onclick="closeLightbox()">&#10005;</button>
+  <img id="lb-img" src="" alt="">
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zdbaymktrzsmzimwdeua.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkYmF5bWt0cnpzbXppbXdkZXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDAxNTQsImV4cCI6MjA5MTQxNjE1NH0.-NONMuk3lkeL0HTiJtPBNEU3F33Y4dOIb1Iv7_K2Ykw';
+
+const SECTIONS = [
+  { id:'storerooms', title:'Storerooms', icon:'&#127978;', items:['Rotation of food supplies','All items covered, labeled, dated','Items stored on racks 6 inches from floor','Cleaning supplies stored in separate area','Shelves clean and free of dust','Walls, floors, ceilings, vents and doors clean','No signs of rodent/insect infestation'] },
+  { id:'refrigerator', title:'Refrigerator', icon:'&#10052;', items:['Shelves, racks, walls, floors, ceiling and doors clean','Interior, refrigerator fans clear and free of dust or ice','Thermometer visible and temperature 41F or below','Refrigerator temps logged daily','Raw food items stored below cooked food items','Food items dated and labeled','Food items discarded after 72 hours'] },
+  { id:'freezers', title:'Freezers', icon:'&#129398;', items:['All food covered, labeled and dated','All items stored on racks, allowing proper air circulation','Shelves, racks, walls, floors, ceiling and doors clean and free from ice build up','Thermometer visible and temperature 0F or below','Freezer temperature logged daily'] },
+  { id:'inventory', title:'Inventory', icon:'&#128230;', items:['Items organized and labeled for counts','Counts by sleeve and boxes confirmed','Counts done by same person','Counts done same day/time','Pricing updated when invoices come in with weekly products','Are there items that are not being used','Pricing is up to date/current with weeks received on all forms'] },
+  { id:'pizza', title:'Pizza Station', icon:'&#127829;', items:['Clean and free of toppings used to make previous pizza','Cutting utensil, knives and board wiped down and disinfected','Topping drained and refilled - all topping accounted for','All pizza crusts are stocked','Boxes are premade for hunks and call ins','Hot box displayed filled with pizza','Hot box display wiped down and clean behind and in front','Pizza time labeled of when made on box','Pizza variety in stock at time of inspection'] },
+  { id:'sink', title:'3 Compartment Sink', icon:'&#128703;', items:['Sanitizing solution test kit available and used','All items are air dried','Storage racks, walls and floor are clean','3 Compartment Sink log PPM recorded daily','Scrubbers/rags in clean order','All food prep equipment, utensils cleaned, sanitized and stored properly'] },
+  { id:'sanitation', title:'General Sanitation', icon:'&#129529;', items:['Daily cleaning schedule completed and followed','Handwashing procedures posted at hand washing sink','Towel and soap dispensers filled and working','All floors, walls, ceilings and work areas are clean','All work tables and drawers clean and neat','Hood filters clean and regularly scheduled to be cleaned','Gloves worn by employees per facility policy and procedure to serve food','Smoker cleaned out and ready','Steamer wiped down and drained','Heat boxes wiped down and off','Heated grab and go wiped down of crumbs, organized and clean','Hot box wiped down and glass cleaned inside and out','Trash taken out, boxes broken down','Griddle grease drain cleaned, disposed of daily into grease trap','Fryers filtered each day after use'] },
+  { id:'front', title:'Front of House', icon:'&#127968;', items:['Dining room tables and seats wiped down','Drink stations wiped down, free of trash','Dining room trash cans overflowing','Fresh cookies and pastries in bakery case; are they labeled','Condiments refilled and organized','Windows/Doors are wiped down, no smudges','Entrance way swept','Swept under seating','Coffee/Tea urns wiped down','Inventory organized in cabinets for access','Cups, lids, straws, condiments stocked'] },
+  { id:'entering', title:'Upon Entering Store', icon:'&#128682;', items:["Greeted with \"Welcome to Keith's\"",'Entrance area free of garbage/trash','Garbage cans recently pulled','Cigarette post at least 6 feet from doorways'] },
+  { id:'icecream', title:'Ice Cream Machines', icon:'&#127846;', items:['Ice cream log fully filled out','Machine working properly','Machine cleaned within last 7 days - Week 1 (verify on log)','Machine cleaned within last 7 days - Week 2 (verify on log)','Machine cleaned within last 7 days - Week 3 (verify on log)','Machine cleaned within last 7 days - Week 4 (verify on log)'] },
+  { id:'bakerycase', title:'Bakery Case', icon:'&#129360;', items:['Bakery case full for customers','Bakery case clean','Log complete','All products / shelves dated','All products in date'] },
+  { id:'pretzel', title:'Pretzel Warmer', icon:'&#129384;', items:['Clean','Stocked','Log complete','Product in date'] },
+  { id:'nacho', title:'Nacho Dispenser', icon:'&#129472;', items:['Clean','Stocked','Log up to date','Product in date'] },
+  { id:'rollergrill', title:'Roller Grill', icon:'&#127789;', items:['Roller grill is stocked','Food on roller grill is fresh','Log present showing when food was added and pull time'] },
+  { id:'gelato', title:'Gelato Case', icon:'&#127848;', items:['Clean','Stocked','No craters','Fresh','Log up to date'] }
+];
+
+var inspection = null;
+var noItems = [];
+var fuAnswers = {};
+var fuPhotos = {};
+var signedURLMap = {};
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(d){
+  if(!d) return '';
+  var p=d.split('-'); return p.length===3 ? p[1]+'/'+p[2]+'/'+p[0] : d;
+}
+
+function openLightbox(src){
+  document.getElementById('lb-img').src=src;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lb-img').src='';
+}
+
+async function loadInspection(){
+  var params=new URLSearchParams(window.location.search);
+  var id=params.get('id');
+  if(!id){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('error').style.display='block';
+    document.getElementById('error').textContent='No inspection ID provided. Open this page from an inspection report or admin panel.';
+    return;
+  }
+
+  try{
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/inspections?id=eq.'+encodeURIComponent(id)+'&select=*',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(!resp.ok) throw new Error('Failed to load inspection');
+    var data=await resp.json();
+    if(!data.length) throw new Error('Inspection not found');
+    inspection=data[0];
+
+    var photoKeys=inspection.photo_keys||{};
+    var allPaths=[];
+    Object.values(photoKeys).forEach(function(arr){ arr.forEach(function(p){ allPaths.push(p); }); });
+    if(allPaths.length>0){
+      try{
+        var signResp=await fetch(SUPABASE_URL+'/storage/v1/object/sign/inspection-photos',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+          body:JSON.stringify({expiresIn:3600,paths:allPaths})
+        });
+        var results=await signResp.json();
+        results.forEach(function(item){
+          if(item.signedURL) signedURLMap[item.path]=SUPABASE_URL+item.signedURL;
+        });
+      }catch(e){ console.warn('Photo signing failed',e); }
+    }
+
+    buildFollowUp();
+  }catch(e){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('error').style.display='block';
+    document.getElementById('error').textContent=e.message;
+  }
+}
+
+function buildFollowUp(){
+  var r=inspection;
+  var answers=r.answers||{};
+  var photoKeys=r.photo_keys||{};
+
+  SECTIONS.forEach(function(sec){
+    sec.items.forEach(function(item,i){
+      var k=sec.id+'_'+i;
+      if(answers[k]==='no'){
+        noItems.push({sec:sec, item:item, key:k, origPhotos:photoKeys[k]||[]});
+        fuAnswers[k]=null;
+        fuPhotos[k]=[];
+      }
+    });
+  });
+
+  if(noItems.length===0){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('error').style.display='block';
+    document.getElementById('error').innerHTML='This inspection had no NO items — no follow-up needed!<br><br><a href="admin.html" style="color:#1452b8;">Back to Admin</a>';
+    return;
+  }
+
+  document.getElementById('loading').style.display='none';
+  document.getElementById('main-content').style.display='block';
+
+  var sname=r.store_name||'';
+  var storeLabel='#'+(r.store_num||'?')+(sname?' – '+sname:'');
+
+  document.getElementById('meta-card').innerHTML=
+    '<div class="meta-row"><span>Store: <strong>'+esc(storeLabel)+'</strong></span><span>Original Date: <strong>'+fmtDate(r.inspection_date)+'</strong></span></div>'+
+    '<div class="meta-row"><span>Inspector: <strong>'+esc(r.inspector)+'</strong></span><span>Score: <strong>'+r.score+'%</strong></span></div>'+
+    '<div class="meta-row"><span>Items marked NO: <strong style="color:#dc2626;">'+noItems.length+'</strong></span></div>';
+
+  var deadlineBar=document.getElementById('deadline-bar');
+  if(r.follow_up_date){
+    var fuParts=r.follow_up_date.includes('-') ? r.follow_up_date : '';
+    var today=new Date(); today.setHours(0,0,0,0);
+    var deadlineText=r.follow_up_date;
+    if(fuParts){
+      deadlineText=fmtDate(fuParts);
+      var due=new Date(fuParts+'T12:00:00');
+      if(due<today){
+        deadlineBar.className='deadline-bar overdue';
+        deadlineBar.innerHTML='&#9888;&#65039; OVERDUE — Original deadline was <strong>'+deadlineText+'</strong>';
+      } else {
+        deadlineBar.className='deadline-bar on-time';
+        deadlineBar.innerHTML='&#128197; Follow-up deadline: <strong>'+deadlineText+'</strong> — store has 7 days to correct all NO items';
+      }
+    } else {
+      deadlineBar.className='deadline-bar on-time';
+      deadlineBar.innerHTML='&#128197; Follow-up deadline: <strong>'+esc(r.follow_up_date)+'</strong>';
+    }
+  } else {
+    deadlineBar.style.display='none';
+  }
+
+  document.getElementById('fu-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('fu-inspector').value=r.inspector||'';
+
+  var reportURL=window.location.origin+window.location.pathname.replace(/[^\/]*$/,'')+'report.html?id='+r.id;
+  var reportBtn=document.getElementById('btn-report');
+  reportBtn.href=reportURL;
+  reportBtn.style.display='block';
+
+  var grouped={};
+  noItems.forEach(function(ni){
+    if(!grouped[ni.sec.id]) grouped[ni.sec.id]={sec:ni.sec,items:[]};
+    grouped[ni.sec.id].items.push(ni);
+  });
+
+  var wrap=document.getElementById('sections');
+  Object.keys(grouped).forEach(function(secId){
+    var g=grouped[secId];
+    var sec=g.sec;
+    var div=document.createElement('div');
+    div.className='section';
+
+    var html=
+      '<div class="sec-header" onclick="toggleSec(\''+secId+'\')">' +
+        '<div class="sec-left"><span class="sec-icon">'+sec.icon+'</span><span class="sec-title">'+esc(sec.title)+'</span></div>' +
+        '<div class="sec-right"><span class="sec-badge" id="badge_'+secId+'">0/'+g.items.length+'</span>' +
+        '<span class="chevron" id="chev_'+secId+'">&#9662;</span></div>' +
+      '</div>' +
+      '<div class="sec-body open" id="body_'+secId+'">';
+
+    g.items.forEach(function(ni){
+      var k=ni.key;
+      html+=
+        '<div class="c-item">' +
+          '<div class="item-row">' +
+            '<div style="flex:1;">' +
+              '<div class="item-text">'+esc(ni.item)+'</div>' +
+              '<div class="item-original">Originally marked NO</div>' +
+            '</div>' +
+            '<div class="item-controls">' +
+              '<button class="btn-corr yes" id="yes_'+k+'" onclick="pick(\''+k+'\',\'yes\')">CORRECTED</button>' +
+              '<button class="btn-corr no" id="no_'+k+'" onclick="pick(\''+k+'\',\'no\')">STILL NO</button>' +
+              '<button class="btn-cam" id="cam_'+k+'" onclick="togglePhoto(\''+k+'\')">&#128247;</button>' +
+            '</div>' +
+          '</div>';
+
+      if(ni.origPhotos.length>0){
+        html+='<div class="orig-photos"><div class="orig-photos-label">Original inspection photos:</div><div class="orig-photo-row">';
+        ni.origPhotos.forEach(function(path){
+          var src=signedURLMap[path]||'';
+          if(src) html+='<img class="orig-thumb" src="'+esc(src)+'" onclick="openLightbox(\''+esc(src)+'\')" alt="original">';
+        });
+        html+='</div></div>';
+      }
+
+      html+=
+        '<div class="photo-zone" id="pz_'+k+'">' +
+          '<div class="photo-row" id="pr_'+k+'">' +
+            '<div class="add-tile" onclick="triggerFile(\''+k+'\')">' +
+              '<span class="plus">+</span><span>Add photo</span>' +
+            '</div>' +
+          '</div>' +
+          '<input type="file" id="fi_'+k+'" accept="image/*" capture="environment" multiple onchange="gotFiles(\''+k+'\',this)" style="display:none;">' +
+        '</div>';
+
+      html+='</div>';
+    });
+
+    html+='</div>';
+    div.innerHTML=html;
+    wrap.appendChild(div);
+  });
+
+  updateProg();
+  updateSummary();
+}
+
+function toggleSec(id){
+  var body=document.getElementById('body_'+id);
+  var chev=document.getElementById('chev_'+id);
+  body.classList.toggle('open');
+  chev.classList.toggle('open');
+}
+
+function pick(k,val){
+  fuAnswers[k]=val;
+  document.getElementById('yes_'+k).className='btn-corr yes'+(val==='yes'?' sel-yes':'');
+  document.getElementById('no_'+k).className='btn-corr no'+(val==='no'?' sel-no':'');
+
+  var sec=k.split('_')[0];
+  if(k.match(/^[a-z]+_\d+$/)){
+    var secId=k.replace(/_\d+$/,'');
+    updateBadge(secId);
+  }
+  updateProg();
+  updateSummary();
+}
+
+function updateBadge(secId){
+  var badge=document.getElementById('badge_'+secId);
+  if(!badge) return;
+  var total=0,done=0;
+  noItems.forEach(function(ni){
+    if(ni.sec.id===secId){ total++; if(fuAnswers[ni.key]!==null) done++; }
+  });
+  badge.textContent=done+'/'+total;
+}
+
+function updateProg(){
+  var total=Object.keys(fuAnswers).length;
+  var done=Object.values(fuAnswers).filter(function(v){ return v!==null; }).length;
+  document.getElementById('prog-text').textContent=done+' / '+total;
+  document.getElementById('prog-fill').style.width=(total?Math.round(done/total*100):0)+'%';
+}
+
+function updateSummary(){
+  var total=Object.keys(fuAnswers).length;
+  var corrected=Object.values(fuAnswers).filter(function(v){ return v==='yes'; }).length;
+  var stillNo=Object.values(fuAnswers).filter(function(v){ return v==='no'; }).length;
+  var pending=total-corrected-stillNo;
+
+  var card=document.getElementById('summary-card');
+  if(corrected+stillNo>0){
+    card.classList.add('show');
+    document.getElementById('summary-body').innerHTML=
+      '<div class="summary-row"><span>Total NO items from original</span><span class="summary-val">'+total+'</span></div>'+
+      '<div class="summary-row"><span>Corrected</span><span class="summary-val green">'+corrected+'</span></div>'+
+      '<div class="summary-row"><span>Still Deficient</span><span class="summary-val red">'+stillNo+'</span></div>'+
+      '<div class="summary-row"><span>Not Yet Reviewed</span><span class="summary-val gray">'+pending+'</span></div>'+
+      '<div class="summary-row" style="border-top:2px solid #e0e0dc;padding-top:8px;margin-top:4px;"><span>Correction Rate</span><span class="summary-val '+(total-pending>0&&corrected/(total-pending)>=0.5?'green':'red')+'">'+
+        (total-pending>0?Math.round(corrected/(total-pending)*100):0)+'%</span></div>';
+  } else {
+    card.classList.remove('show');
+  }
+}
+
+function togglePhoto(k){
+  var pz=document.getElementById('pz_'+k);
+  pz.classList.toggle('open');
+}
+
+function triggerFile(k){ document.getElementById('fi_'+k).click(); }
+
+function gotFiles(k,input){
+  Array.from(input.files).forEach(function(file){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      fuPhotos[k].push(e.target.result);
+      renderPhotoRow(k);
+      document.getElementById('cam_'+k).classList.add('has');
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value='';
+}
+
+function renderPhotoRow(k){
+  var row=document.getElementById('pr_'+k);
+  var html='';
+  fuPhotos[k].forEach(function(src,i){
+    html+='<img class="thumb" src="'+src+'" onclick="openLightbox(\''+esc(src)+'\')" alt="photo '+i+'">';
+  });
+  html+='<div class="add-tile" onclick="triggerFile(\''+k+'\')"><span class="plus">+</span><span>Add photo</span></div>';
+  row.innerHTML=html;
+}
+
+function dataURLtoBlob(dataurl){
+  var parts=dataurl.split(','), mime=parts[0].match(/:(.*?);/)[1];
+  var binary=atob(parts[1]);
+  var arr=new Uint8Array(binary.length);
+  for(var i=0;i<binary.length;i++) arr[i]=binary.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+
+async function saveFollowUp(){
+  var statusEl=document.getElementById('save-status');
+  statusEl.className='save-status show loading';
+  statusEl.textContent='Saving follow-up data...';
+  document.getElementById('btn-save').disabled=true;
+
+  try{
+    var fuDate=document.getElementById('fu-date').value||'';
+    var fuInspector=document.getElementById('fu-inspector').value||'';
+    var fuNotes=document.getElementById('fu-notes').value||'';
+
+    var corrected=Object.values(fuAnswers).filter(function(v){ return v==='yes'; }).length;
+    var stillNo=Object.values(fuAnswers).filter(function(v){ return v==='no'; }).length;
+    var total=Object.keys(fuAnswers).length;
+
+    var stillNoItems=[];
+    noItems.forEach(function(ni){
+      if(fuAnswers[ni.key]==='no') stillNoItems.push('['+ni.sec.title+'] '+ni.item);
+    });
+
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/inspections?id=eq.'+inspection.id,{
+      method:'PATCH',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_KEY,
+        'Authorization':'Bearer '+SUPABASE_KEY,
+        'Prefer':'return=representation'
+      },
+      body:JSON.stringify({
+        followup_data:{
+          date:fuDate,
+          inspector:fuInspector,
+          answers:fuAnswers,
+          notes:fuNotes,
+          corrected_count:corrected,
+          still_no_count:stillNo,
+          total_no_items:total,
+          correction_rate:total>0?Math.round(corrected/total*100):0,
+          still_no_items:stillNoItems,
+          completed_at:new Date().toISOString()
+        }
+      })
+    });
+
+    if(!resp.ok) throw new Error('Save failed: '+(await resp.text()));
+
+    var allPhotoEntries=Object.entries(fuPhotos).filter(function(e){ return e[1].length>0; });
+    if(allPhotoEntries.length>0){
+      statusEl.textContent='Uploading follow-up photos...';
+      for(var ei=0;ei<allPhotoEntries.length;ei++){
+        var key=allPhotoEntries[ei][0], pics=allPhotoEntries[ei][1];
+        for(var pi=0;pi<pics.length;pi++){
+          var blob=dataURLtoBlob(pics[pi]);
+          var ext=blob.type.includes('png')?'png':'jpg';
+          var path=inspection.id+'/followup_'+key+'_'+pi+'.'+ext;
+          await fetch(SUPABASE_URL+'/storage/v1/object/inspection-photos/'+path,{
+            method:'POST',
+            headers:{
+              'apikey':SUPABASE_KEY,
+              'Authorization':'Bearer '+SUPABASE_KEY,
+              'Content-Type':blob.type||'image/jpeg'
+            },
+            body:blob
+          });
+        }
+      }
+    }
+
+    statusEl.className='save-status show success';
+    statusEl.textContent='Follow-up saved! '+corrected+' corrected, '+stillNo+' still deficient.';
+  }catch(e){
+    statusEl.className='save-status show error';
+    statusEl.textContent='Error: '+e.message;
+  }
+  document.getElementById('btn-save').disabled=false;
+}
+
+function exportPDF(){
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({unit:'mm',format:'letter'});
+  var y=20, pw=doc.internal.pageSize.getWidth(), ph=doc.internal.pageSize.getHeight(), mx=18;
+
+  function T(text,x,yy,opts){
+    opts=opts||{};
+    doc.setFontSize(opts.size||11);
+    doc.setFont('helvetica',opts.style||'normal');
+    if(opts.color) doc.setTextColor(opts.color[0],opts.color[1],opts.color[2]);
+    else doc.setTextColor(30,30,30);
+    var lines=doc.splitTextToSize(text,opts.maxW||(pw-mx*2));
+    doc.text(lines,x,yy);
+    return lines.length*(opts.size||11)*0.45;
+  }
+
+  function checkPage(need){
+    if(y+need>ph-20){ doc.addPage(); y=20; }
+  }
+
+  var r=inspection;
+  var sname=r.store_name||'';
+  var storeLabel='#'+(r.store_num||'?')+(sname?' - '+sname:'');
+  var fuDate=document.getElementById('fu-date').value||'';
+  var fuInspector=document.getElementById('fu-inspector').value||'';
+  var fuNotes=document.getElementById('fu-notes').value||'';
+
+  doc.setFillColor(26,39,68);
+  doc.rect(0,0,pw,38,'F');
+  doc.setFillColor(232,169,53);
+  doc.rect(0,38,pw,2,'F');
+
+  T("KEITH'S F.&.B. FOLLOW-UP CHECKLIST",mx,14,{size:16,style:'bold',color:[255,255,255]});
+  T('Store '+storeLabel,mx,22,{size:12,color:[200,168,75]});
+  var rightInfo='Follow-up: '+(fuDate?fmtDate(fuDate):'--')+'  |  Inspector: '+(fuInspector||'--');
+  T(rightInfo,mx,30,{size:9,color:[180,180,200]});
+  T('Original: '+fmtDate(r.inspection_date)+'  |  Score: '+r.score+'%  |  Inspector: '+(r.inspector||'--'),mx,35,{size:9,color:[180,180,200]});
+
+  y=48;
+
+  var corrected=Object.values(fuAnswers).filter(function(v){ return v==='yes'; }).length;
+  var stillNo=Object.values(fuAnswers).filter(function(v){ return v==='no'; }).length;
+  var total=Object.keys(fuAnswers).length;
+  var reviewed=corrected+stillNo;
+  var rate=reviewed>0?Math.round(corrected/reviewed*100):0;
+
+  doc.setFillColor(240,240,237);
+  doc.roundedRect(mx,y,pw-mx*2,16,3,3,'F');
+  T('Total NO Items: '+total,mx+4,y+6,{size:10,style:'bold'});
+  T('Corrected: '+corrected,mx+55,y+6,{size:10,style:'bold',color:[22,163,74]});
+  T('Still Deficient: '+stillNo,mx+100,y+6,{size:10,style:'bold',color:[220,38,38]});
+  T('Correction Rate: '+rate+'%',mx+4,y+12,{size:10,style:'bold',color:rate>=50?[22,163,74]:[220,38,38]});
+  y+=22;
+
+  var grouped={};
+  noItems.forEach(function(ni){
+    if(!grouped[ni.sec.id]) grouped[ni.sec.id]={sec:ni.sec,items:[]};
+    grouped[ni.sec.id].items.push(ni);
+  });
+
+  Object.keys(grouped).forEach(function(secId){
+    var g=grouped[secId];
+    checkPage(14);
+    doc.setFillColor(26,39,68);
+    doc.roundedRect(mx,y,pw-mx*2,8,2,2,'F');
+    T(g.sec.title,mx+3,y+5.5,{size:10,style:'bold',color:[255,255,255]});
+    y+=11;
+
+    g.items.forEach(function(ni){
+      checkPage(12);
+      var status=fuAnswers[ni.key];
+      var label=status==='yes'?'CORRECTED':status==='no'?'STILL NO':'PENDING';
+      var lcolor=status==='yes'?[22,163,74]:status==='no'?[220,38,38]:[150,150,150];
+
+      doc.setFillColor(lcolor[0],lcolor[1],lcolor[2]);
+      doc.roundedRect(mx,y,2,6,1,1,'F');
+
+      var h=T(ni.item,mx+5,y+4,{size:9,maxW:pw-mx*2-50});
+      T(label,pw-mx-30,y+4,{size:8,style:'bold',color:lcolor});
+      y+=Math.max(h,6)+3;
+    });
+    y+=3;
+  });
+
+  if(fuNotes){
+    checkPage(20);
+    T('FOLLOW-UP NOTES',mx,y+4,{size:10,style:'bold'});
+    y+=8;
+    var h=T(fuNotes,mx,y+4,{size:9,maxW:pw-mx*2});
+    y+=h+6;
+  }
+
+  var filename='FollowUp_Store'+r.store_num+'_'+(fuDate||'undated')+'.pdf';
+  doc.save(filename);
+}
+
+loadInspection();
+</script>
+</body>
+</html>
