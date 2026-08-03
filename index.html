@@ -261,14 +261,16 @@ const SECTIONS = [
     'Refrigerator temps logged daily',
     'Raw food items stored below cooked food items',
     'Food items dated and labeled',
-    'Food items discarded after 72 hours'
+    'Food items discarded after 72 hours',
+    'Food products rotated using FIFO (First In, First Out)'
   ]},
   { id:'freezers', title:'Freezers', icon:'&#129398;', items:[
     'All food covered, labeled and dated',
     'All items stored on racks, allowing proper air circulation',
     'Shelves, racks, walls, floors, ceiling and doors clean and free from ice build up',
     'Thermometer visible and temperature 0F or below',
-    'Freezer temperature logged daily'
+    'Freezer temperature logged daily',
+    'Food products rotated using FIFO (First In, First Out)'
   ]},
   { id:'inventory', title:'Inventory', icon:'&#128230;', items:[
     'Items organized and labeled for counts',
@@ -299,7 +301,6 @@ const SECTIONS = [
     'All food prep equipment, utensils cleaned, sanitized and stored properly'
   ]},
   { id:'sanitation', title:'General Sanitation', icon:'&#129529;', items:[
-    'Daily cleaning schedule completed and followed',
     'Handwashing procedures posted at hand washing sink',
     'Towel and soap dispensers filled and working',
     'All floors, walls, ceilings and work areas are clean',
@@ -315,11 +316,56 @@ const SECTIONS = [
     'Griddle grease drain cleaned, disposed of daily into grease trap',
     'Fryers filtered each day after use'
   ]},
+  { id:'cleaningsched', title:'Restaurant Cleaning Schedule', icon:'&#128220;', items:[
+    'Restaurant cleaning schedule filled out',
+    'Cleaning tasks completed to Keith\'s Superstore standards'
+  ]},
+  { id:'cleaningdaily', title:'Cleaning Schedule - Daily', icon:'&#128197;', items:[
+    'Wipe down and sanitize all food-contact surfaces (prep tables, slicer, cutting boards)',
+    'Sanitize prep sinks and handwash sinks',
+    'Empty and sanitize trash cans; replace liners',
+    'Sweep and mop floors (kitchen, prep area, front of house)',
+    'Wipe down exterior of equipment (fridges, ovens, toaster, panini press)',
+    'Clean and sanitize slicer blade (breakdown, wash, sanitize) during use, whenever switching between products, and at least every 4 hours',
+    'Wipe down condiment station and squeeze bottles',
+    'Sanitize register/POS area and customer counters',
+    'Empty and clean grease trap strainer (if applicable)',
+    'Restock sanitizer buckets/wiping cloths; verify concentration with test strips',
+    'Take out recyclables/cardboard',
+    'Wipe down dining tables and chairs after each use; deep wipe at close',
+    'Clean restrooms (stock supplies, sanitize surfaces)'
+  ]},
+  { id:'cleaningweekly', title:'Cleaning Schedule - Weekly', icon:'&#128198;', items:[
+    'Deep clean walk-in cooler/freezer (floors, shelving, door gaskets)',
+    'Descale coffee/espresso equipment (if used)',
+    'Clean interior of microwave and toaster oven',
+    'Deep clean 3 compartment sink and backsplash',
+    'Scrub floor drains and grout lines',
+    'Deep clean slicer (full disassembly, all parts)',
+    'Wipe down walls near cooking equipment',
+    'Clean out reach-in fridge interiors; check gaskets',
+    'Sanitize ice machine exterior and scoop holder',
+    'Launder/replace floor mats; clean underneath them',
+    'Wipe down shelving units in dry storage',
+    'Deep clean employee break area'
+  ]},
+  { id:'cleaningmonthly', title:'Cleaning Schedule - Monthly', icon:'&#128199;', items:[
+    'Deep clean walk-in cooler/freezer coils and fans',
+    'Scrub bottom shelves and legs of all prep tables',
+    'Descale/deep clean ice machine interior',
+    'Clean behind and underneath heavy equipment (line, fridges)',
+    'Inspect and clean light fixtures/vent covers',
+    'Wash walls and ceiling tiles in kitchen',
+    'Deep clean dry storage shelving and rotate stock (FIFO check)',
+    'Sanitize and organize chemical storage area',
+    'Check and clean fire suppression system components (visual inspection)',
+    'Pressure wash outdoor areas (dumpster pad, entrance)',
+    'Calibrate thermometers'
+  ]},
   { id:'front', title:'Front of House', icon:'&#127968;', items:[
     'Dining room tables and seats wiped down',
     'Drink stations wiped down, free of trash',
     'Dining room trash cans overflowing',
-    'Fresh cookies and pastries in bakery case; are they labeled',
     'Condiments refilled and organized',
     'Windows/Doors are wiped down, no smudges',
     'Entrance way swept',
@@ -480,7 +526,7 @@ function toggle(id){
   document.getElementById('chev_'+id).classList.toggle('open');
 }
 
-function pick(k,val){
+function applyAnswer(k,val){
   answers[k]=val;
   ['yes','no','na'].forEach(function(v){
     var el=document.getElementById(v+'_'+k);
@@ -489,7 +535,14 @@ function pick(k,val){
   document.getElementById(val+'_'+k).classList.add(val==='yes'?'yes-on':val==='no'?'no-on':'na-on');
   if(val==='no') document.getElementById('pz_'+k).classList.add('open');
   var mz=document.getElementById('maint_'+k); if(mz) mz.classList.toggle('open',val==='no');
-  updateBadge(k.split('_')[0]); updateProg();
+  updateBadge(k.split('_')[0]);
+}
+
+function pick(k,val){
+  applyAnswer(k,val);
+  // If the pizza hot box isn't filled, there can't be variety in stock either.
+  if(k==='pizza_5' && val==='no') applyAnswer('pizza_8','no');
+  updateProg();
 }
 
 function togglePhoto(k){ document.getElementById('pz_'+k).classList.toggle('open'); }
