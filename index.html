@@ -47,6 +47,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .sec-body { border-top: 1px solid #f0f0ec; display: none; }
 .sec-body.open { display: block; }
 
+.sec-na-row { padding: 10px 14px; background: #fbfbf9; border-bottom: 1px solid #f0f0ec; }
+.sec-na-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #7a5008; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sec-na-label input { width: 18px; height: 18px; accent-color: #d4a030; cursor: pointer; margin: 0; }
+
 .c-item { border-bottom: 1px solid #f0f0ec; }
 .c-item:last-child { border-bottom: none; }
 .item-row { padding: 11px 14px; display: flex; align-items: flex-start; gap: 8px; }
@@ -62,6 +66,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .btn-cam { height: 34px; width: 34px; border-radius: 8px; border: 1px solid #e0e0dc; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; -webkit-tap-highlight-color: transparent; flex-shrink: 0; }
 .btn-cam.has-pic { background: #e8f0fc; border-color: #4a80d0; }
 .btn-cam:active { transform: scale(0.94); }
+.btn-yn:disabled, .btn-na:disabled, .btn-cam:disabled { opacity: 0.35; cursor: default; }
 
 .photo-zone { padding: 0 14px 12px; display: none; }
 .photo-zone.open { display: block; }
@@ -258,7 +263,7 @@ const SECTIONS = [
     'Shelves, racks, walls, floors, ceiling and doors clean',
     'Interior, refrigerator fans clear and free of dust or ice',
     'Thermometer visible and temperature 41F or below',
-    'Refrigerator temps logged daily',
+    'Refrigerator temps logged every 4 hours',
     'Raw food items stored below cooked food items',
     'Food items dated and labeled',
     'Food items discarded after 72 hours',
@@ -269,7 +274,7 @@ const SECTIONS = [
     'All items stored on racks, allowing proper air circulation',
     'Shelves, racks, walls, floors, ceiling and doors clean and free from ice build up',
     'Thermometer visible and temperature 0F or below',
-    'Freezer temperature logged daily',
+    'Freezer temperature logged every 4 hours',
     'Food products rotated using FIFO (First In, First Out)'
   ]},
   { id:'inventory', title:'Inventory', icon:'&#128230;', items:[
@@ -469,7 +474,8 @@ function build(){
         '<div class="sec-right"><span class="sec-badge" id="badge_'+sec.id+'">0/'+sec.items.length+'</span>' +
         '<span class="chevron" id="chev_'+sec.id+'">&#9662;</span></div>' +
       '</div>' +
-      '<div class="sec-body" id="body_'+sec.id+'">';
+      '<div class="sec-body" id="body_'+sec.id+'">' +
+      '<div class="sec-na-row"><label class="sec-na-label"><input type="checkbox" id="secna_'+sec.id+'" onchange="toggleSectionNA(\''+sec.id+'\',this.checked)"> N/A &mdash; store doesn\'t have this equipment</label></div>';
 
     sec.items.forEach(function(item,i){
       var k=sec.id+'_'+i;
@@ -543,6 +549,29 @@ function pick(k,val){
   // If the pizza hot box isn't filled, there can't be variety in stock either.
   if(k==='pizza_5' && val==='no') applyAnswer('pizza_8','no');
   updateProg();
+}
+
+function toggleSectionNA(secId,checked){
+  var sec=SECTIONS.find(function(s){ return s.id===secId; });
+  sec.items.forEach(function(_,i){
+    var k=secId+'_'+i;
+    if(checked){
+      applyAnswer(k,'na');
+    } else {
+      answers[k]=null;
+      ['yes','no','na'].forEach(function(v){
+        var el=document.getElementById(v+'_'+k);
+        if(el) el.className=el.className.replace(/ (yes-on|no-on|na-on)/g,'');
+      });
+      var pz=document.getElementById('pz_'+k); if(pz) pz.classList.remove('open');
+      var mz=document.getElementById('maint_'+k); if(mz) mz.classList.remove('open');
+    }
+    ['yes_','no_','na_','cam_'].forEach(function(prefix){
+      var el=document.getElementById(prefix+k);
+      if(el) el.disabled=checked;
+    });
+  });
+  updateBadge(secId); updateProg();
 }
 
 function togglePhoto(k){ document.getElementById('pz_'+k).classList.toggle('open'); }
